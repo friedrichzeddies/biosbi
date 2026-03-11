@@ -10,15 +10,7 @@ complexity toward realistic cryo-EM imaging conditions.
 
 Core pipeline:
 
-θ (parameters)
-    ↓
-forward simulator
-    ↓
-image x
-    ↓
-SBI inference
-    ↓
-posterior p(θ | x)
+θ (parameters) → forward simulator → image x → SBI inference → posterior p(θ | x)
 
 
 
