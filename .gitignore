@@ -1,0 +1,51 @@
+# ========================
+# Python & virtualenv
+# ========================
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+
+# uv lock file (optional: you may want to commit it for reproducibility)
+# uv.lock
+
+# ========================
+# VS Code
+# ========================
+.vscode/
+.history/
+
+# ========================
+# macOS / Linux / Windows
+# ========================
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# Testing / coverage
+# ========================
+.coverage
+htmlcov/
+.tox/
+.nox/
+pytest_cache/
