@@ -3,7 +3,11 @@ name = "biosbi"
 version = "0.1.0"
 requires-python = "==3.12.*"
 dependencies = [
+    "fastapi",
+    "httpx",
+    "markdown",
     "torch",  
     "sbi",
-    "pydantic"
+    "pydantic",
+    "uvicorn"
 ]

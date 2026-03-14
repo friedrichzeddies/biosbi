@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>biosbi playground</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="layout">
+    <header class="hero card">
+      <h1>biosbi Local Playground</h1>
+      <p>
+        Markdown notes plus practical local controls: edit simulation parameters,
+        build JSON payloads from text input, and forward them to localhost.
+      </p>
+    </header>
+
+    <section class="grid">
+      <article class="card stack">
+        <h2>Blog Notes (Markdown)</h2>
+        <p class="hint">Rendered from <code>src/playground/content.md</code>.</p>
+        <div id="blog-content" class="blog-content">Loading markdown...</div>
+      </article>
+
+      <article class="card stack">
+        <h2>Simulation Parameters JSON</h2>
+        <p class="hint">Reads/writes <code>src/forward_sim/simulation_parameters.json</code>.</p>
+        <textarea id="params-editor" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="reload-params" class="secondary" type="button">Reload</button>
+          <button id="save-params" type="button">Save Parameters</button>
+        </div>
+      </article>
+
+      <article class="card stack">
+        <h2>Local Interaction Relay</h2>
+        <p class="hint">Input text becomes JSON as <code>{"message": "..."}</code>.</p>
+
+        <label>
+          Target URL (localhost only)
+          <input id="target-url" type="url" value="http://127.0.0.1:8001/ingest" spellcheck="false">
+        </label>
+
+        <label>
+          Message
+          <textarea id="message-input" spellcheck="true">run simulation with current parameters</textarea>
+        </label>
+
+        <div class="actions">
+          <button id="send-json" type="button">Send JSON</button>
+          <button id="render-message" class="secondary" type="button">Render Message Markdown</button>
+        </div>
+
+        <h3>Generated Payload</h3>
+        <pre id="payload-preview">{}</pre>
+
+        <h3>Relay Response</h3>
+        <pre id="relay-output">No request sent yet.</pre>
+      </article>
+    </section>
+
+    <footer class="status-wrap card">
+      <p id="status">Ready.</p>
+    </footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
