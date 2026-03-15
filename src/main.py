@@ -1,9 +1,16 @@
+# src/main.py
+
 import uvicorn
-from src.playground.webapp import create_app
 
 
-app = create_app()
+def main():
+    uvicorn.run(
+        "src.playground.app:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )
 
 
 if __name__ == "__main__":
-    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+    main()

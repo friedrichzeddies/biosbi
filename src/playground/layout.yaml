@@ -1,0 +1,14 @@
+- type: markdown
+  file: 01-intro.md
+
+- type: markdown
+  file: 02-chapter.md
+
+- type: markdown
+  file: 03-theory.md
+
+- type: interactive
+  name: forward_pass
+
+- type: markdown
+  file: results.md
