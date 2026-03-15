@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>biosbi playground</title>
+        <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+        {% for block in blocks %}
+        {% if block.type == "markdown" %}
+        <section class="markdown">{{ block.html | safe }}
+            <hr>
+        </section>
+        {% elif block.type == "interactive" %}
+        <section class="interactive" data-name="{{ block.name }}">
+                <h2>{{ block.name }}</h2>
+                <button type="button">Run</button>
+                <pre class="result">idle</pre>
+        </section>
+        {% endif %}
+        {% endfor %}
+</main>
+
+<script>
+document.querySelectorAll('.interactive').forEach((section) => {
+    const button = section.querySelector('button');
+    const result = section.querySelector('.result');
+    const name = section.dataset.name;
+
+    button.addEventListener('click', async () => {
+        result.textContent = 'running...';
+        try {
+            const response = await fetch('/api/forward-sim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ block: name })
+            });
+            const data = await response.json();
+            result.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            result.textContent = String(error);
+        }
+    });
+});
+</script>
+</body>
+</html>
