@@ -8,7 +8,7 @@
   file: 03-theory.md
 
 - type: interactive
-  name: forward_pass
+  name: Simulation-Forward
 
 - type: markdown
-  file: results.md
+  file: 04-results.md
