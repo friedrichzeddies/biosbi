@@ -1,0 +1,23 @@
+{
+    "N_PIXELS": 64,
+    "PIXEL_SIZE": 1.5,
+    "SIGMA": [
+        1.0,
+        1.0
+    ],
+    "MODEL_FILE": "../cat_points_grid.pt",
+    "SHIFT": 0.0,
+    "DEFOCUS": [
+        1e-33,
+        1e-32
+    ],
+    "SNR": [
+        1000.0,
+        1000.0
+    ],
+    "AMP": 1,
+    "B_FACTOR": [
+        1.0,
+        1.0
+    ]
+}
