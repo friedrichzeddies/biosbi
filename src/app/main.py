@@ -11,7 +11,7 @@ def main():
     st.set_page_config(page_title="CryoSBI Cat Projector", layout="wide")
     
     # Load intro text
-    intro_path = os.path.join(os.path.dirname(__file__), "content", "intro.md")
+    intro_path = os.path.join(os.path.dirname(__file__), "content", "01_01_intro.md")
     if os.path.exists(intro_path):
         with open(intro_path, "r", encoding="utf-8") as f:
             st.markdown(f.read())

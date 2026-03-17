@@ -10,6 +10,8 @@ from cryo_sbi.wpa_simulator.image_generation import project_density
 
 @st.cache_data
 def load_simulator():
+    # Change the logic for sim_params (as tutorials moved and will not 
+    # be correct anyways)
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     json_path = os.path.join(base_dir, "tutorials", "simulation_parameters.json")
     
