@@ -226,7 +226,7 @@ requires-dist = [
     { name = "pygltflib", specifier = ">=1.16.5" },
     { name = "rtree", specifier = ">=1.4.1" },
     { name = "scipy" },
-    { name = "streamlit", specifier = ">=1.55.0" },
+    { name = "streamlit", specifier = ">=1.50.0" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "trimesh", specifier = ">=4.11.3" },
