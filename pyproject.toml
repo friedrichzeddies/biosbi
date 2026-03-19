@@ -26,6 +26,7 @@ dependencies = [
     "trimesh>=4.11.3",
     "rtree>=1.4.1",
     "streamlit>=1.55.0",
+    "pygltflib>=1.16.5",
 ]
 
 
