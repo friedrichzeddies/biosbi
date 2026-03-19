@@ -1,0 +1,23 @@
+{
+    "N_PIXELS": 64,
+    "PIXEL_SIZE": 1.5,
+    "SIGMA": [
+        1.0,
+        1.0
+    ],
+    "MODEL_FILE": "../cat_points_grid_12221_Cat_v1_l3_lie_down_embedded_2models.pt",
+    "SHIFT": 0.0,
+    "DEFOCUS": [
+        2.0,
+        2.0
+    ],
+    "SNR": [
+        0.01,
+        0.5
+    ],
+    "AMP": 0.1,
+    "B_FACTOR": [
+        1.0,
+        1.0
+    ]
+}
