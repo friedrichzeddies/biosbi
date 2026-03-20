@@ -1,33 +1,23 @@
 import streamlit as st
 import torch
-import numpy as np
 import os
-import json
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from cryo_sbi import CryoEmSimulator
 from cryo_sbi.wpa_simulator.image_generation import project_density
 
-@st.cache_data
+@st.cache_resource
 def load_simulator():
-    # Change the logic for sim_params (as tutorials moved and will not 
-    # be correct anyways)
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    json_path = os.path.join(base_dir, "tutorials", "simulation_parameters.json")
+    widget_dir = os.path.dirname(__file__)
+    json_path = os.path.abspath(
+        os.path.join(widget_dir, "..", "data", "widgets_static", "cat_proj_params.json")
+    )
     
     if not os.path.exists(json_path):
         st.error(f"Could not find simulation parameters at {json_path}")
         return None
-        
-    # We need to temporarily change directory because the json config 
-    # might have relative paths like "../cat_points_grid.pt"
-    # Actually, the JSON file in tutorials has "MODEL_FILE": "../cat_points_grid.pt"
-    # The CryoEmSimulator resolves this relative to the working directory.
-    # So we'll instantiate it from the root directory.
-    current_cwd = os.getcwd()
-    os.chdir(os.path.join(base_dir, "tutorials"))
-    simulator = CryoEmSimulator("simulation_parameters.json")
-    os.chdir(current_cwd)
+
+    simulator = CryoEmSimulator(json_path)
     return simulator
 
 @st.fragment
