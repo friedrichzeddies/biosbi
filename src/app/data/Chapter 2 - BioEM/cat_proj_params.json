@@ -5,7 +5,7 @@
         1.0,
         1.0
     ],
-    "MODEL_FILE": "../cat/cat_points_grid_cat_animation_3models.pt",
+    "MODEL_FILE": "src/app/data/cat/cat_points_grid_cat_animation_2models.pt",
     "SHIFT": 0.0,
     "DEFOCUS": [
         1e-33,
