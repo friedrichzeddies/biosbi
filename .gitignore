@@ -7,7 +7,6 @@ tests/test_simulator.ipynb
 .DS_Store
 #SBI related folders
 sbi-logs/
-*.png
 *.pdf
 *.png
 

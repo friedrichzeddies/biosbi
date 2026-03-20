@@ -10,7 +10,7 @@ from cryo_sbi.wpa_simulator.image_generation import project_density
 def load_simulator():
     widget_dir = os.path.dirname(__file__)
     json_path = os.path.abspath(
-        os.path.join(widget_dir, "..", "data", "widgets_static", "cat_proj_params.json")
+        os.path.join(widget_dir, "..", "data", "Chapter 2 - BioEM", "cat_proj_params.json")
     )
     
     if not os.path.exists(json_path):

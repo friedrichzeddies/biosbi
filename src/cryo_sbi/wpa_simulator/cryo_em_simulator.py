@@ -1,5 +1,6 @@
 from typing import Union, Callable
 import json
+import os
 import numpy as np
 import torch
 
@@ -81,8 +82,11 @@ class CryoEmSimulator:
         Returns:
             None
         """
+        self._config_path = os.path.abspath(config_fname)
+        self._config_dir = os.path.dirname(self._config_path)
 
-        config = json.load(open(config_fname))
+        with open(self._config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
         check_image_params(config)
         self._config = config
 
@@ -94,17 +98,21 @@ class CryoEmSimulator:
             None
 
         """
-        if self._config["MODEL_FILE"].endswith("npy"):
+        model_file = self._config["MODEL_FILE"]
+        if not os.path.isabs(model_file):
+            model_file = os.path.abspath(os.path.join(self._config_dir, model_file))
+
+        if model_file.endswith("npy"):
             models = (
                 torch.from_numpy(
-                    np.load(self._config["MODEL_FILE"]),
+                    np.load(model_file),
                 )
                 .to(self._device)
                 .to(torch.float32)
             )
-        elif self._config["MODEL_FILE"].endswith("pt"):
+        elif model_file.endswith("pt"):
             models = (
-                torch.load(self._config["MODEL_FILE"])
+                torch.load(model_file)
                 .to(self._device)
                 .to(torch.float32)
             )
