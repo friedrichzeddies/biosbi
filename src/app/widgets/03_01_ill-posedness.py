@@ -10,8 +10,6 @@ import json
 from cryo_sbi.wpa_simulator.cryo_em_simulator import cryo_em_simulator, CryoEmSimulator
 import cryo_sbi.utils.estimator_utils as est_utils
 
-st.set_page_config(page_title="Ill-Posedness Conformations", layout="wide")
-
 @st.cache_resource
 def load_assets(model_dir):
     sim_json = os.path.join(model_dir, "simulation_parameters.json")
@@ -242,4 +240,5 @@ def render_ui():
         st.pyplot(fig2)
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="Ill-Posedness Conformations", layout="wide")
     render_ui()
