@@ -32,6 +32,13 @@ def main():
         
     st.divider()
     
+    # Run the interactive widget
+    #cat_projector_widget()
+    cat_resnet_summary_widget(instance_id="main")
+
+    st.divider()
+
+    # run single and double wave animation
     # 1. Huygens
     single_wave()
     st.markdown("comments and hand-off to double")
@@ -57,6 +64,8 @@ def main():
     
     # 6. Ill-Posedness Conformations
     load_widget_file("widgets/03_01_ill-posedness.py", "render_ui")
+    st.divider()
+
     st.divider()
 
 if __name__ == "__main__":
