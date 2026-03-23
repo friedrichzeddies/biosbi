@@ -13,9 +13,7 @@ sbi-logs/
 # Training data, models and other datafiles
 results/
 production/
-*.estimator
 *epoch=*
-*.loss
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
