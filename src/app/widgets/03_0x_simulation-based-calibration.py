@@ -3,142 +3,161 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-# ==========================================
-# Fragment 1: Single Trial Visualization
-# ==========================================
+def _apply_preset():
+    preset = st.session_state.sbc_preset
+    if "sbc_1_true_theta" in st.session_state:
+        t = st.session_state.sbc_1_true_theta
+        if preset == "Exact Match":
+            st.session_state.sbc_1_mu = float(t)
+            st.session_state.sbc_1_sigma = 1.0
+        elif preset == "Model Too Certain":
+            st.session_state.sbc_1_mu = float(t)
+            st.session_state.sbc_1_sigma = 0.2
+        elif preset == "Model Too Uncertain":
+            st.session_state.sbc_1_mu = float(t)
+            st.session_state.sbc_1_sigma = 3.0
+        elif preset == "Model Overestimating":
+            st.session_state.sbc_1_mu = float(t) + 2.0
+            st.session_state.sbc_1_sigma = 1.0
+        elif preset == "Model Underestimating":
+            st.session_state.sbc_1_mu = float(t) - 2.0
+            st.session_state.sbc_1_sigma = 1.0
+
 @st.fragment
-def render_single_trial():
-    st.subheader("1. The Anatomy of a Single Trial")
-    st.write("In SBC, we compute how often the True $\\theta^*$ falls below the samples drawn from the Predicted Posterior.")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        true_theta = st.slider("True $\\theta^*$", -5.0, 5.0, 0.0, 0.1, key="sbc_1_theta")
-    with col2:
-        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -5.0, 5.0, 0.0, 0.1, key="sbc_1_mu")
-    with col3:
-        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
-    
-    M = st.slider("Number of Posterior Samples $M$", 10, 100, 20, 1, key="sbc_1_m")
-    
-    # 1. Math
+def _render_single_trial(post_mu, post_sigma, M):
+    """Isolated fragment: button only re-runs this panel."""
+    st.subheader("1. Single Trial Anatomy")
+
+    # Initialize true theta state
+    if "sbc_1_true_theta" not in st.session_state:
+        st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
+
+    if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", use_container_width=True):
+        st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
+        _apply_preset()
+
+    true_theta = st.session_state.sbc_1_true_theta
+    st.markdown(f"**Current True $\\theta^*$**: `{true_theta:+.3f}`")
+
     # Draw M samples from the predicted posterior N(mu, sigma^2)
     samples = np.random.normal(post_mu, post_sigma, M)
-    
+
     # Compute rank
     rank = np.sum(samples < true_theta)
-    
-    # 2. Plot
-    fig, ax = plt.subplots(figsize=(10, 3))
-    
-    # Plot posterior Gaussian curve
+
+    # Single Trial Plot
+    fig1, ax1 = plt.subplots(figsize=(6, 4))
+
+    # Plot True Posterior N(0, 1) as a dashed red line
+    true_post_x = np.linspace(-4, 4, 300)
+    true_post_y = stats.norm.pdf(true_post_x, 0, 1.0)
+    ax1.plot(true_post_x, true_post_y, color='red', linestyle='--', alpha=0.7, label='True Posterior $P^*(\\theta)$')
+    ax1.fill_between(true_post_x, 0, true_post_y, color='red', alpha=0.05)
+
+    # Plot dynamic predicted posterior Gaussian curve
     x_min = min(true_theta, post_mu) - 4*post_sigma
     x_max = max(true_theta, post_mu) + 4*post_sigma
     x = np.linspace(x_min, x_max, 500)
     y = stats.norm.pdf(x, post_mu, post_sigma)
-    
-    ax.plot(x, y, color='blue', label='Predicted Posterior $Q(\\theta)$')
-    ax.fill_between(x, 0, y, color='blue', alpha=0.1)
-    
-    # Plot samples
-    ax.scatter(samples, np.zeros_like(samples), color='blue', marker='|', s=200, label=f'{M} Samples $\\tilde{{\\theta}}$', zorder=3)
-    
-    # Plot True Theta
-    ax.axvline(true_theta, color='red', linestyle='--', linewidth=2, label='True $\\theta^*$', zorder=4)
-    
-    ax.set_ylim(-0.05 * np.max(y), np.max(y) * 1.2)
-    ax.set_yticks([])
-    ax.set_xlabel("$\\theta$ value")
-    ax.legend(loc='upper right')
-    
-    st.pyplot(fig)
-    
-    st.info(f"**Rank Result:** Out of {M} samples, exactly **{rank}** were less than the True $\\theta^*$. \n\n Therefore, the rank for this trial is **{rank}**.")
-    st.markdown("---")
 
+    ax1.plot(x, y, color='blue', label='Predicted Posterior $Q(\\theta)$')
+    ax1.fill_between(x, 0, y, color='blue', alpha=0.15)
 
-# ==========================================
-# Fragment 2: Mass Trial / LLN SBC Histogram
-# ==========================================
+    # Plot samples as blue rug ticks
+    ax1.scatter(samples, np.zeros_like(samples), color='blue', marker='|', s=200, label=f'{M} Samples $\\tilde{{\\theta}}$', zorder=3)
+
+    # Plot True Theta as a slightly larger red rug tick (legend omitted — red dashed curve already identifies it)
+    ax1.scatter([true_theta], [0], color='red', marker='|', s=400, linewidths=2, label='_nolegend_', zorder=4)
+
+    # Lock axes
+    ax1.set_xlim(-8, 8)
+    global_max_y = max(np.max(y), np.max(true_post_y))
+    ax1.set_ylim(-0.05 * global_max_y, global_max_y * 1.2)
+    ax1.set_yticks([])
+    ax1.set_xlabel("$\\theta$ value")
+    ax1.legend(loc='upper right')
+
+    st.pyplot(fig1)
+    
+    # Small explainer box for this specific trial's rank
+    st.info(f"**Rank of $\\theta^*$ = {rank}** — Out of {M} predicted posterior samples, **{rank}** fell below the true $\\theta^*={true_theta:+.2f}$. That places $\\theta^*$ at position {rank} out of {M}.")
+
 @st.fragment
-def render_sbc_mass_trials():
-    st.subheader("2. The Law of Large Numbers (SBC Rank Histogram)")
-    st.write("If the model is perfectly calibrated, doing the above trial $N$ times with mathematically correct posteriors will result in a perfectly flat histogram of ranks. Let's manually introduce model pathologies and see how the geometric histogram breaks.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        bias = st.slider("Systematic Bias (Prediction offset)", -2.0, 2.0, 0.0, 0.1, key="sbc_2_bias")
-    with col2:
-        dispersion = st.slider("Dispersion Factor (Prediction width)", 0.2, 3.0, 1.0, 0.1, key="sbc_2_disp")
-        
+def _render_histogram(post_mu, post_sigma, M):
+    """Isolated fragment: only re-runs when sliders change, NOT when the trial button is pressed."""
+    st.subheader("2. LLN SBC Histogram")
+
     N = 2000
-    M = 50
-    st.write(f"*(Simulating mathematically $N={N}$ independent trials with $M={M}$ samples per trial...)*")
-    
-    # Vectorized SBC simulation
-    
-    # To simulate N mathematically perfectly calibrated trials without needing full Bayesian likelihood updates:
-    # 1. Define physical target posterior means randomly across the space
-    ideal_mus = np.random.normal(0, 2.0, N)
-    
-    # 2. Draw the TRUE theta for each trial directly out of the ideal, perfectly calibrated posterior N(ideal_mu, 1)
-    true_thetas = np.random.normal(ideal_mus, 1.0)
-    
-    # 3. Apply the user's pathology (Prediction Bias and Dispersion width) to the ideal posterior
-    predicted_mus = ideal_mus + bias
-    predicted_sigmas = np.ones(N) * dispersion
-    
-    # 4. Draw M samples from the user's *predicted* posterior
+    st.write(f"*(Simulating $N={N}$ trials: each draws True $\\theta^*$ from $P^*(\\theta)=\\mathcal{{N}}(0,1)$ and {M} samples from $Q(\\theta)=\\mathcal{{N}}({post_mu:.1f},\\,{post_sigma:.1f})$...)*")
+
+    # Vectorized SBC simulation — directly mirrors the Single Trial panel:
+    # 1. Draw N true thetas from the True Posterior N(0, 1) (the red dashed curve)
+    true_thetas = np.random.normal(0, 1.0, N)
+
+    # 2. Draw M samples from the Predicted Posterior N(post_mu, post_sigma) for each trial (the blue curve)
     # Shape: (N, M)
-    samples = np.random.normal(predicted_mus[:, None], predicted_sigmas[:, None], (N, M))
-    
-    # 4. Compute rank for each trial
-    # Compare (N, M) to (N, 1) -> sums across columns
-    ranks = np.sum(samples < true_thetas[:, None], axis=1)
-    
-    # 5. Plot
-    fig, ax = plt.subplots(figsize=(10, 4))
-    
-    # Bins from exactly -0.5 to M+0.5 so each integer 0..M lands perfectly in the center of a bar
+    mass_samples = np.random.normal(post_mu, post_sigma, (N, M))
+
+    # 3. Compute rank for each trial
+    ranks = np.sum(mass_samples < true_thetas[:, None], axis=1)
+
+    # Plot
+    fig2, ax2 = plt.subplots(figsize=(6, 4))
+
     bins = np.arange(-0.5, M + 1.5, 1)
-    counts, _, _ = ax.hist(ranks, bins=bins, color='purple', edgecolor='black', alpha=0.7, density=True)
-    
-    # Expected uniform height = 1 / (M + 1)
-    expected_height = 1.0 / (M + 1)
-    ax.axhline(expected_height, color='black', linestyle='--', linewidth=2, label='Perfect Calibration (Uniform)')
-    
-    # Force Y-axis scale to be somewhat locked so optical illusions don't mess with perception
-    # We allow it to scale up if U-shape breaks constraints, but keep minimum height.
+    counts, _, _ = ax2.hist(ranks, bins=bins, color='purple', edgecolor='black', alpha=0.7, density=True)
+
+    # Expected uniform height p = 1 / (M + 1)
+    p = 1.0 / (M + 1)
+    ax2.axhline(p, color='black', linestyle='--', linewidth=2, label='Perfect Calibration (Uniform)')
+
+    # 95% Binomial CI band
+    ci_margin = 1.96 * np.sqrt(p * (1 - p) / N)
+    ax2.fill_between([-1, M + 1], p - ci_margin, p + ci_margin, color='gray', alpha=0.3, label='95% CI Band')
+
     max_count = np.max(counts)
-    ax.set_ylim(0, max(expected_height * 2.5, max_count * 1.1))
-    
-    ax.set_xlim(-1, M + 1)
-    ax.set_xlabel(f"Rank (0 to {M})")
-    ax.set_ylabel("Relative Frequency")
-    ax.legend(loc='upper center')
-    
-    st.pyplot(fig)
-    
+    ax2.set_ylim(0, max(p * 2.5, max_count * 1.1))
+    ax2.set_xlim(-1, M + 1)
+    ax2.set_xlabel(f"Rank of $\\theta^*$ (0 to {M})")
+    ax2.set_ylabel("Relative Frequency")
+    ax2.legend(loc='upper center')
+
+    st.pyplot(fig2)
+
     # Auto-analysis readout
-    if bias > 0.5:
-        st.warning("Notice the slope! A positive bias causes the model to consistently guess too high, pushing the True $\\theta^*$ into the lowest ranks.")
-    elif bias < -0.5:
-        st.warning("Notice the slope! A negative bias causes the model to consistently guess too low, pushing the True $\\theta^*$ into the highest ranks.")
-    elif dispersion < 0.7:
+    if post_mu > 0.5:
+        st.warning("Notice the slope! The predicted posterior mean is shifted **right** of the true posterior, pushing ranks low.")
+    elif post_mu < -0.5:
+        st.warning("Notice the slope! The predicted posterior mean is shifted **left** of the true posterior, pushing ranks high.")
+    elif post_sigma < 0.7:
         st.error("Notice the U-shape! The model is **overconfident** (too narrow). The True $\\theta^*$ frequently lands completely outside the tight predictions, piling up at ranks 0 and M.")
-    elif dispersion > 1.5:
+    elif post_sigma > 1.5:
         st.info("Notice the Bathtub (∩) shape! The model is **underconfident** (too wide). The predicted posterior stretches so wide that the True $\\theta^*$ always safely lands near the middle, starving the 0 and M rank edges.")
     else:
         st.success("Perfectly Uniform! The model predicts exactly the correct data distribution without bias or over/under-confidence.")
 
-
 def render():
     st.markdown("## Interactive SBC Visualizer")
     st.write("Simulation-Based Calibration provides a geometric sanity check: if our neural network genuinely learned the correct posterior distribution $p(\\theta | x)$, then the true parameter $\\theta^*$ behind any simulated observation $x$ must look like a perfectly ordinary drawn sample from that predicted posterior.")
-    
-    render_single_trial()
-    render_sbc_mass_trials()
 
+    # Shared controls (outside fragments — changing these re-runs the whole page, updating both panels)
+    presets = ["Manual", "Exact Match", "Model Too Certain", "Model Too Uncertain", "Model Overestimating", "Model Underestimating"]
+    st.selectbox("Quick Presets", presets, key="sbc_preset", on_change=_apply_preset)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -5.0, 5.0, -2.0, 0.1, key="sbc_1_mu")
+    with col2:
+        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
+
+    M = st.slider("Number of Predicted Posterior Samples $M$", 10, 100, 20, 1, key="sbc_1_m")
+
+    # Side-by-side fragments — each re-runs independently
+    vis_col1, vis_col2 = st.columns(2)
+    with vis_col1:
+        _render_single_trial(post_mu, post_sigma, M)
+    with vis_col2:
+        _render_histogram(post_mu, post_sigma, M)
 
 if __name__ == "__main__":
     st.set_page_config(page_title="SBC Intuition", layout="centered")
