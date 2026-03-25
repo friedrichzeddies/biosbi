@@ -60,6 +60,9 @@ def render_widget():
 
 When you glue this into `main.py`, the rest of your app has absolutely no idea how heavy this widget is—it just works flawlessly and independently.
 
+> [!IMPORTANT] 
+> **CRITICAL RULE**: Do not preemptively integrate widgets into `main.py` without being explicitly asked by the user! Always develop and test widgets in complete isolation.
+
 ---
 
 ## Agentic Implementation Patterns for cryo_sbi Widgets
@@ -201,4 +204,16 @@ When building highly interactive signal summation tools where users can tune ind
 - **Mathematical Global Phase (Spatial vs Component):** Adding a "Global Phase" to a decomposed signal must be handled with care regarding user expectation:
   - Phase Shift Per Component: `y += A * sin(f * x + phi + global_phase)` mathematically applies an absolute phase angle to every wave. Visually, because the wavelengths are different (higher frequencies compress more waves into $2\pi$), this distorts the shape of the reconstructed packet itself and causes peaks to slide past each other dynamically.
   - Spatial Translation (Envelope Shift): `y += A * sin(f * (x + global_phase) + phi)` treats the global phase as a pure literal shift in the $x$ domain. This perfectly translates the *entire, rigidly assembled shape* of the complex wave left or right across the screen without dispersive distortion. Choose this method if users expect the shape to stay intact identically.
-```
+  - Spatial Translation (Envelope Shift): `y += A * sin(f * (x + global_phase) + phi)` treats the global phase as a pure literal shift in the $x$ domain. This perfectly translates the *entire, rigidly assembled shape* of the complex wave left or right across the screen without dispersive distortion. Choose this method if users expect the shape to stay intact identically.
+
+### 6. Ill-Posedness & Arbitrary Conformation Inference UIs
+When constructing inference dashboards (like `03_01_ill-posedness.py`) that must dynamically serve an arbitrary number of distinct 3D conformations (from 2 up to 100), follow these core agentic design patterns:
+
+- **Graceful Simulator Fallbacks:** If a user selects a model directory that only contains `simulation_parameters.json` but no trained `estimator.pt`, the app should not crash. Use `os.path.exists` to verify the posterior files early. If they are missing, gracefully load the `CryoEmSimulator` anyway so the user can easily visualize all the dynamic simulation output images, and simply replace the KDE Inference plot block downstream with an `st.info()` warning them to run their training script first!
+- **De-Quantization KDE Boundaries:** Normalizing flows predicting discrete integer classes (e.g. Conformation 0, 1, 2) often require the integer boundaries to be uniformly "de-quantized" with $\pm 0.5$ noise to be evaluated continuously. Because of this, the posterior scatter KDE plot (`sns.kdeplot`) will naturally leak into negative numbers like $-0.3$. You must explicitly set `ax.set_xlim(-0.5, num_models - 0.5)` and draw explicit vertical bounding dashed lines at `i - 0.5` so the user visually understands the uniform thresholds that mathematically round back down to the target integer states.
+- **Weighted Percentage Histograms:** When pairing continuous KDE traces with discretized probability bar charts (`ax.hist()`), raw sample evaluation counts (e.g., 500 samples out of 1000) are unreadable for pure model probability assessment. You must dynamically cast the integer count into visually scaled percentages by injecting `weights=[np.ones_like(p) / len(p) * 100 for p in preds_list]` into the Matplotlib histogram baseline arguments.
+
+### 7. Dynamic State-Based UI Explainers
+When building mathematically heavy interactive apps, standard static text blocks are often insufficient to help the user connect the math to the visual intuition. Follow the "Red Thread" pattern: dynamically render explainer text boxes (`st.info`, `st.warning`, `st.error`) conditioned mathematically identically to the plots themselves.
+- **Example Use Case:** If a user moves a slider that adjusts a Gaussian distribution's mean past a target point, the UI should explicitly spawn an `st.info()` block saying: *"Because you shifted the mean to the right of the target, the expected rank will rapidly decay... "*
+- **Implementation:** Always evaluate the mathematical states (e.g., $Z$-score thresholds) and render matching text explicitly guiding the user on *why* the plot looks the way it does based purely on their current slider configurations.
