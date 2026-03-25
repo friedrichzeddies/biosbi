@@ -217,3 +217,104 @@ When constructing inference dashboards (like `03_01_ill-posedness.py`) that must
 When building mathematically heavy interactive apps, standard static text blocks are often insufficient to help the user connect the math to the visual intuition. Follow the "Red Thread" pattern: dynamically render explainer text boxes (`st.info`, `st.warning`, `st.error`) conditioned mathematically identically to the plots themselves.
 - **Example Use Case:** If a user moves a slider that adjusts a Gaussian distribution's mean past a target point, the UI should explicitly spawn an `st.info()` block saying: *"Because you shifted the mean to the right of the target, the expected rank will rapidly decay... "*
 - **Implementation:** Always evaluate the mathematical states (e.g., $Z$-score thresholds) and render matching text explicitly guiding the user on *why* the plot looks the way it does based purely on their current slider configurations.
+
+### 8. Simulation-Based Calibration (SBC) for Internal Model Validation
+SBC is the primary method for validating whether a trained neural posterior estimator has actually learned the correct posterior distribution. The core idea: **the true parameter $\theta^*$ should look like any other sample drawn from the predicted posterior**. If it does, the rank of $\theta^*$ among $M$ posterior samples will be uniformly distributed across $\{0, \ldots, M\}$.
+
+#### SBC Pipeline (for real trained models)
+When implementing SBC with a real `cryo_sbi` estimator, follow this exact loop:
+```python
+import numpy as np
+import cryo_sbi.utils.estimator_utils as est_utils
+
+N = 2000  # number of SBC trials
+M = 50    # posterior samples per trial
+ranks = np.zeros(N, dtype=int)
+
+for i in range(N):
+    # 1. Draw true parameters from the simulator prior
+    true_params = simulator._priors.sample((1,))
+    
+    # 2. Simulate an observation x from the true parameters
+    x = simulator.simulate(true_params)
+    
+    # 3. Run the trained estimator to get M posterior samples
+    posterior_samples = est_utils.sample_posterior(
+        estimator=posterior, images=x, 
+        num_samples=M, batch_size=M, device="cpu"
+    )
+    
+    # 4. Compute rank: how many posterior samples are less than true theta
+    if posterior_samples.ndim == 3:
+        samples_1d = posterior_samples[:, 0, 0].numpy()
+    else:
+        samples_1d = posterior_samples[:, 0].numpy()
+    
+    true_val = true_params[0, 0].item()
+    ranks[i] = np.sum(samples_1d < true_val)
+```
+
+#### Visualizing SBC Results: Rank Histogram
+The rank histogram is the simplest visualization. Use `density=True` and draw the expected uniform height as a reference line. Use **independent `if` blocks** (not `elif`) to report both mean-shift and width pathologies simultaneously.
+```python
+bins = np.arange(-0.5, M + 1.5, 1)
+counts, _, _ = ax.hist(ranks, bins=bins, color='purple', edgecolor='black', alpha=0.7, density=True)
+
+p = 1.0 / (M + 1)
+ax.axhline(p, color='black', linestyle='--', linewidth=2, label='Perfect Calibration')
+
+# Optional: 95% binomial CI band
+ci_margin = 1.96 * np.sqrt(p * (1 - p) / N)
+ax.fill_between([-1, M + 1], p - ci_margin, p + ci_margin, color='gray', alpha=0.3, label='95% CI')
+```
+
+**Histogram pathology signatures:**
+| Shape | Cause | Posterior Problem |
+|-------|-------|-------------------|
+| Sloped left→right | Systematic positive bias in mean | Posterior mean too high |
+| Sloped right→left | Systematic negative bias in mean | Posterior mean too low |
+| U-shape (edges high) | Width too narrow | Overconfident model |
+| Bathtub ∩ (center high) | Width too wide | Underconfident model |
+| Flat | None | Perfectly calibrated |
+
+**Key caveat:** Histogram shape is sensitive to bin count. If the number of bins doesn't divide the rank range evenly, artifacts appear.
+
+#### Visualizing SBC Results: ECDF Plot
+The ECDF avoids the binning problem entirely. Every rank contributes directly to the cumulative curve. A 95% confidence band shows the expected envelope.
+```python
+sorted_ranks = np.sort(ranks)
+ecdf_y = np.arange(1, N + 1) / N
+
+alpha = 0.05
+epsilon = np.sqrt(np.log(2.0 / alpha) / (2 * N))
+diag_x = np.linspace(0, M, 300)
+diag_y = (diag_x + 1) / (M + 1)
+
+ax.fill_between(diag_x, np.clip(diag_y - epsilon, 0, 1), 
+                np.clip(diag_y + epsilon, 0, 1),
+                color='lightblue', alpha=0.5, label='95% CI')
+ax.step(sorted_ranks, ecdf_y, where='post', color='purple', linewidth=2, label='Observed ECDF')
+```
+
+**ECDF pathology signatures:**
+| Shape | Cause | Posterior Problem |
+|-------|-------|-------------------|
+| Bows above the band | Positive mean bias | Posterior mean too high |
+| Bows below the band | Negative mean bias | Posterior mean too low |
+| S-shape crossing through | Width too narrow | Overconfident model |
+| Flat edges, steep middle | Width too wide | Underconfident model |
+| Stays inside the band | None | Well-calibrated |
+
+#### Pathology Explainer Pattern
+When displaying auto-analysis readouts, always use independent `if` checks for mean shift and width separately, so compound pathologies (e.g., biased AND overconfident) both fire:
+```python
+has_pathology = False
+if post_mu > threshold:
+    st.warning("Mean shift → ...")
+    has_pathology = True
+if post_sigma < threshold:
+    st.error("Width too narrow → ...")
+    has_pathology = True
+if not has_pathology:
+    st.success("Well-calibrated!")
+```

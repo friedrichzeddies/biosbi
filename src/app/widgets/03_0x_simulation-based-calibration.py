@@ -17,10 +17,10 @@ def _apply_preset():
             st.session_state.sbc_1_mu = float(t)
             st.session_state.sbc_1_sigma = 3.0
         elif preset == "Model Overestimating":
-            st.session_state.sbc_1_mu = float(t) + 2.0
+            st.session_state.sbc_1_mu = float(t) + 1.0
             st.session_state.sbc_1_sigma = 1.0
         elif preset == "Model Underestimating":
-            st.session_state.sbc_1_mu = float(t) - 2.0
+            st.session_state.sbc_1_mu = float(t) - 1.0
             st.session_state.sbc_1_sigma = 1.0
 
 @st.fragment
@@ -124,17 +124,23 @@ def _render_histogram(post_mu, post_sigma, M):
 
     st.pyplot(fig2)
 
-    # Auto-analysis readout
+    # Auto-analysis readout (independent checks so both mean and width pathologies can fire simultaneously)
+    has_pathology = False
     if post_mu > 0.5:
-        st.warning("Notice the slope! The predicted posterior mean is shifted **right** of the true posterior, pushing ranks low.")
-    elif post_mu < -0.5:
-        st.warning("Notice the slope! The predicted posterior mean is shifted **left** of the true posterior, pushing ranks high.")
-    elif post_sigma < 0.7:
-        st.error("Notice the U-shape! The model is **overconfident** (too narrow). The True $\\theta^*$ frequently lands completely outside the tight predictions, piling up at ranks 0 and M.")
-    elif post_sigma > 1.5:
-        st.info("Notice the Bathtub (∩) shape! The model is **underconfident** (too wide). The predicted posterior stretches so wide that the True $\\theta^*$ always safely lands near the middle, starving the 0 and M rank edges.")
-    else:
+        st.warning("**Mean shift →** The histogram slopes downward! The predicted posterior mean is shifted **right** of the true posterior, pushing ranks low.")
+        has_pathology = True
+    if post_mu < -0.5:
+        st.warning("**Mean shift ←** The histogram slopes upward! The predicted posterior mean is shifted **left** of the true posterior, pushing ranks high.")
+        has_pathology = True
+    if post_sigma < 0.7:
+        st.error("**Width too narrow →** U-shape! The model is **overconfident**. The True $\\theta^*$ frequently lands completely outside the tight predictions, piling up at ranks 0 and $M$.")
+        has_pathology = True
+    if post_sigma > 1.5:
+        st.info("**Width too wide →** Bathtub (∩) shape! The model is **underconfident**. The predicted posterior stretches so wide that the True $\\theta^*$ always safely lands near the middle, starving the 0 and $M$ rank edges.")
+        has_pathology = True
+    if not has_pathology:
         st.success("Perfectly Uniform! The model predicts exactly the correct data distribution without bias or over/under-confidence.")
+
 
 def render():
     st.markdown("## Interactive SBC Visualizer")
@@ -146,7 +152,7 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -5.0, 5.0, -2.0, 0.1, key="sbc_1_mu")
+        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -1.5, 1.5, -1.0, 0.1, key="sbc_1_mu")
     with col2:
         post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
 
@@ -158,6 +164,70 @@ def render():
         _render_single_trial(post_mu, post_sigma, M)
     with vis_col2:
         _render_histogram(post_mu, post_sigma, M)
+    
+    # ==========================================
+    # Sidequest: Why ECDF over Histogram?
+    # ==========================================
+    with st.expander("🗺️ Sidequest: Is a histogram the best choice?"):
+        # ECDF plot at the top of the expander
+        N_ecdf = 2000
+        true_thetas_ecdf = np.random.normal(0, 1.0, N_ecdf)
+        mass_samples_ecdf = np.random.normal(post_mu, post_sigma, (N_ecdf, M))
+        ranks_ecdf = np.sum(mass_samples_ecdf < true_thetas_ecdf[:, None], axis=1)
+        
+        sorted_ranks = np.sort(ranks_ecdf)
+        ecdf_y = np.arange(1, N_ecdf + 1) / N_ecdf
+        
+        # DKW 95% confidence band
+        alpha = 0.05
+        epsilon = np.sqrt(np.log(2.0 / alpha) / (2 * N_ecdf))
+        
+        fig3, ax3 = plt.subplots(figsize=(8, 4))
+        
+        # 95% CI band (min/max envelope around the uniform CDF diagonal)
+        diag_x = np.linspace(0, M, 300)
+        diag_y = (diag_x + 1) / (M + 1)
+        ax3.fill_between(diag_x, np.clip(diag_y - epsilon, 0, 1), np.clip(diag_y + epsilon, 0, 1),
+                         color='lightblue', alpha=0.5, label='95% CI')
+        
+        # ECDF staircase
+        ax3.step(sorted_ranks, ecdf_y, where='post', color='purple', linewidth=2, label='Observed ECDF')
+        
+        ax3.set_xlim(-0.5, M + 0.5)
+        ax3.set_ylim(0, 1.02)
+        ax3.set_xlabel(f"Rank of $\\theta^*$ (0 to {M})")
+        ax3.set_ylabel("Cumulative Probability")
+        ax3.legend(loc='upper left')
+        ax3.set_title("ECDF of SBC Ranks")
+        
+        st.pyplot(fig3)
+        
+        # Auto-analysis readout for ECDF (independent checks)
+        has_ecdf_pathology = False
+        if post_mu > 0.5:
+            st.warning("**Mean shift →** The ECDF **bows above** the band — the predicted posterior is shifted **right**, so ranks pile up low and the cumulative curve rises too fast on the left.")
+            has_ecdf_pathology = True
+        if post_mu < -0.5:
+            st.warning("**Mean shift ←** The ECDF **bows below** the band — the predicted posterior is shifted **left**, so ranks pile up high and the cumulative curve lags behind.")
+            has_ecdf_pathology = True
+        if post_sigma < 0.7:
+            st.error("**Width too narrow →** The ECDF forms an **S-shape** crossing through the band — the model is **overconfident**. Ranks cluster at the extremes (0 and $M$), causing the curve to rise steeply at both ends.")
+            has_ecdf_pathology = True
+        if post_sigma > 1.5:
+            st.info("**Width too wide →** The ECDF stays **flat at the edges** and rises steeply in the middle — the model is **underconfident**. The True $\\theta^*$ almost always lands in the center of the over-wide posterior, starving the extreme ranks.")
+            has_ecdf_pathology = True
+        if not has_ecdf_pathology:
+            st.success("The ECDF tracks perfectly inside the 95% CI band — the model is well-calibrated!")
+        
+        st.markdown("""
+The rank histogram is probably the simplest SBC visualization — but it has one key **disadvantage**: **bin sensitivity.** The shape of the histogram depends heavily on the number of bins you choose. Too few bins smooth away real pathologies; too many bins amplify noise. If the number of bins doesn't evenly divide the total number of ranks, some bins are expected to get slightly more counts than others, introducing artifacts.
+
+---
+
+#### A better alternative: the **ECDF plot** (shown above ↑)
+
+The **Empirical Cumulative Distribution Function (ECDF)** sidesteps this problem entirely — it requires **no binning**. Every rank contributes directly to the curve. The light blue band shows the 95% confidence region. If the ranks are perfectly uniform, the ECDF stays inside the band.
+        """)
 
 if __name__ == "__main__":
     st.set_page_config(page_title="SBC Intuition", layout="centered")
