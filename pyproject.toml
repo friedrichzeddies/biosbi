@@ -27,6 +27,8 @@ dependencies = [
     "rtree>=1.4.1",
     "streamlit>=1.50.0",
     "pygltflib>=1.16.5",
+    "seaborn>=0.13.2",
+    "umap-learn>=0.5.7",
 ]
 
 
