@@ -37,12 +37,20 @@ def _select_key(name: str, instance_id: str) -> str:
     return f"cat_resnet_{instance_id}_{SELECT_KEYS[name]}"
 
 
+def _embedding_grid_shape(dim: int) -> tuple[int, int]:
+    """Return an exact rows x cols shape with rows as close as possible to sqrt(dim)."""
+    side = int(dim ** 0.5)
+    for rows in range(side, 0, -1):
+        if dim % rows == 0:
+            cols = dim // rows
+            return rows, cols
+    return 1, dim
+
+
 def _embedding_to_image(embedding: torch.Tensor) -> torch.Tensor:
     dim = int(embedding.shape[0])
-    side = int(dim ** 0.5)
-    if side * side == dim:
-        return embedding.reshape(side, side)
-    return embedding.reshape(1, dim)
+    rows, cols = _embedding_grid_shape(dim)
+    return embedding.reshape(rows, cols)
 
 
 def _get_scalar_or_mean(value) -> float:
@@ -242,6 +250,7 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
             st.write(f"Embedding dimension: {summary_np.shape[0]}")
             summary_img = _embedding_to_image(summary)
             summary_img_np = summary_img.detach().cpu().numpy()
+            st.write(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
             fig_sum, ax_sum = plt.subplots(figsize=(5, 4))
             im = ax_sum.imshow(summary_img_np, cmap="viridis", aspect="auto")
             if summary_img_np.shape[0] == 1:
@@ -254,6 +263,12 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
             fig_sum.colorbar(im, ax=ax_sum, fraction=0.046, pad=0.04)
             st.pyplot(fig_sum)
             plt.close(fig_sum)
+            
+            if summary_np.shape[0] == 128:
+                st.caption(
+                    "Note: This 128-d embedding is shown as an 8x16 grid for readability only. "
+                    "Cell neighborhood does not imply spatial structure or feature proximity."
+                )
 
 
 def render():
