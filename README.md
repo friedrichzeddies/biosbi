@@ -12,7 +12,7 @@ The interactive Cat Projector is built with Streamlit:
 
 - **`src/app/main.py`**: Main entry point. Run with:
   ```bash
-  streamlit run src/app/main.py
+  uv run streamlit run src/app/main.py
   ```
 - **`src/app/content/`**: Markdown files for explanatory text shown in the app.
 - **`src/app/widgets/`**: Interactive widget and visualization logic.

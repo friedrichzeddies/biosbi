@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cryosbi"
+requires-python = ">=3.12"
 authors = [
    { name = "David Silva-Sanchez", email = "david.silva@yale.edu"},
    { name = "Lars Dingeldein"},
@@ -35,3 +36,10 @@ dependencies = [
 [project.scripts]
 train_npe_model = "cryo_sbi.inference.command_line_tools:cl_npe_train_no_saving"
 model_to_tensor = "cryo_sbi.utils.command_line_tools:cl_models_to_tensor"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cryo_sbi*"]
