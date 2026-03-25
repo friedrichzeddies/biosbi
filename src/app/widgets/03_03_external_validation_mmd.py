@@ -12,6 +12,57 @@ from cryo_sbi.wpa_simulator.cryo_em_simulator import CryoEmSimulator, cryo_em_si
 st.set_page_config(page_title="External Validation: MMD", layout="wide")
 
 
+def _apply_preset():
+    """Apply parameter shifts based on selected preset."""
+    preset = st.session_state.get("mmd_preset", "Manual")
+
+    if "Conservative" in preset:
+        st.session_state.mmd_sigma_scale = 0.9
+        st.session_state.mmd_shift_scale = 0.95
+        st.session_state.mmd_defocus_scale = 1.0
+        st.session_state.mmd_b_factor_scale = 0.95
+        st.session_state.mmd_snr_scale = 1.1
+    elif "Moderate" in preset:
+        st.session_state.mmd_sigma_scale = 0.75
+        st.session_state.mmd_shift_scale = 0.8
+        st.session_state.mmd_defocus_scale = 1.3
+        st.session_state.mmd_b_factor_scale = 0.7
+        st.session_state.mmd_snr_scale = 0.8
+    elif "Aggressive" in preset:
+        st.session_state.mmd_sigma_scale = 2.0
+        st.session_state.mmd_shift_scale = 2.5
+        st.session_state.mmd_defocus_scale = 0.5
+        st.session_state.mmd_b_factor_scale = 3.0
+        st.session_state.mmd_snr_scale = 0.3
+    elif "Overblur" in preset:
+        st.session_state.mmd_sigma_scale = 2.5
+        st.session_state.mmd_shift_scale = 1.0
+        st.session_state.mmd_defocus_scale = 1.0
+        st.session_state.mmd_b_factor_scale = 1.0
+        st.session_state.mmd_snr_scale = 1.0
+    elif "Low SNR" in preset:
+        st.session_state.mmd_sigma_scale = 1.0
+        st.session_state.mmd_shift_scale = 1.0
+        st.session_state.mmd_defocus_scale = 1.0
+        st.session_state.mmd_b_factor_scale = 1.0
+        st.session_state.mmd_snr_scale = 0.3
+
+    # Defer widget-key synchronization to the next rerun before sliders are instantiated.
+    st.session_state.mmd_sync_slider_keys = True
+
+
+def _reset_manual_scales():
+    """Reset manual parameter scales to neutral (1.0)."""
+    st.session_state.mmd_sigma_scale = 1.0
+    st.session_state.mmd_shift_scale = 1.0
+    st.session_state.mmd_defocus_scale = 1.0
+    st.session_state.mmd_b_factor_scale = 1.0
+    st.session_state.mmd_snr_scale = 1.0
+
+    # Sync slider widget keys safely on the next rerun.
+    st.session_state.mmd_sync_slider_keys = True
+
+
 def _available_model_dirs():
     base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
     if not os.path.exists(base_dir):
@@ -174,7 +225,14 @@ def compute_mmd2_fixed_epsilon(z1, z2, epsilon):
     return float(mmd2.item())
 
 
-def mmd_permutation_p_value(z1, z2, epsilon, num_permutations=100):
+def mmd_permutation_p_value(
+    z1,
+    z2,
+    epsilon,
+    num_permutations=100,
+    rng=None,
+    return_null_distribution=False,
+):
     x = torch.as_tensor(z1, dtype=torch.float32)
     y = torch.as_tensor(z2, dtype=torch.float32)
     observed = compute_mmd2_fixed_epsilon(x, y, epsilon)
@@ -182,31 +240,109 @@ def mmd_permutation_p_value(z1, z2, epsilon, num_permutations=100):
     pooled = torch.cat([x, y], dim=0)
     n = x.shape[0]
     exceed = 0
+    null_values = []
     for _ in range(num_permutations):
-        perm = torch.randperm(pooled.shape[0])
+        perm = torch.randperm(pooled.shape[0], generator=rng) if rng is not None else torch.randperm(pooled.shape[0])
         x_p = pooled[perm[:n]]
         y_p = pooled[perm[n:]]
         val = compute_mmd2_fixed_epsilon(x_p, y_p, epsilon)
+        if return_null_distribution:
+            null_values.append(val)
         if val >= observed:
             exceed += 1
 
     p_value = (exceed + 1) / (num_permutations + 1)
-    return observed, p_value
+    return observed, p_value, exceed, null_values
+
+
+def _build_mmd_verdict(misspecified, reject_h0):
+    """Map MMD test outcome to an intuitive user-facing verdict."""
+    if misspecified and reject_h0:
+        return "good", "Good", "Expected mismatch detected: latent distributions are significantly different."
+    if misspecified and (not reject_h0):
+        return (
+            "warn",
+            "Intermediate",
+            "Misspecification was expected, but evidence was not strong enough to reject H0.",
+        )
+    if (not misspecified) and (not reject_h0):
+        return "good", "Good", "No unexpected mismatch detected: distributions are statistically consistent."
+
+    return "bad", "Needs Attention", "Unexpected mismatch detected despite non-misspecified setup."
+
+
+def _render_mmd_results(result):
+    st.markdown("### Result Summary")
+    metrics = st.columns(3)
+    metrics[0].metric("Permutation p-value", f"{result['p_value']:.4f}")
+    metrics[1].metric("Two-sample test", "Reject H0" if result["reject_h0"] else "Do not reject H0")
+    metrics[2].metric("MMD^2", f"{result['mmd2']:.6f}")
+
+    if result["verdict_kind"] == "good":
+        st.success(f"{result['verdict_title']}: {result['verdict_text']}")
+    elif result["verdict_kind"] == "bad":
+        st.error(f"{result['verdict_title']}: {result['verdict_text']}")
+    else:
+        st.warning(f"{result['verdict_title']}: {result['verdict_text']}")
+
+    st.caption(
+        "Scenario label: "
+        + ("misspecified" if result["misspecified"] else "not misspecified")
+        + ". MMD is a formal test: p-value below alpha implies statistically significant mismatch."
+    )
+
+    with st.expander("How to read this without confusion", expanded=False):
+        st.write(result["reason"])
+        st.markdown(
+            "#### Key points:\n"
+            "- **Scenario label** is determined by your controls (construction), not by statistics.\n"
+            "- **MMD test decision** comes from p-value versus alpha (evidence in data).\n"
+            "- Misspecified-by-construction data may still not reject H0 if shift is weak/noisy.\n"
+            "- Non-misspecified setup can occasionally reject H0 due to finite-sample randomness.\n"
+            "- Use both together: generation context + test decision for robust interpretation."
+        )
+
+    with st.expander("Optional: Statistical interpretation and reproducibility", expanded=False):
+        left, right = st.columns(2, gap="medium")
+        with left:
+            st.markdown(
+                "Permutation interpretation:\n"
+                f"- Observed $MMD^2$: **{result['observed_mmd2']:.6f}**\n"
+                f"- Null exceedances: **{result['exceed']} / {result['num_permutations']}**\n"
+                f"- Computed p-value: $({result['exceed']} + 1) / ({result['num_permutations']} + 1) = {result['p_value']:.6f}$"
+            )
+
+            if result["deterministic_permutations"]:
+                st.caption(
+                    f"Reproducibility active: seed={int(result['permutation_seed'])}, "
+                    f"subset size={result['k']}, permutations={result['num_permutations']}."
+                )
+            else:
+                st.caption("Reproducibility off: random subset and permutation draws vary between runs.")
+
+        with right:
+            if result["show_permutation_plot"] and len(result["null_distribution"]) > 0:
+                critical = float(np.quantile(np.asarray(result["null_distribution"]), 1.0 - result["alpha"]))
+                fig, ax = plt.subplots(figsize=(4.8, 2.8))
+                ax.hist(result["null_distribution"], bins=24, alpha=0.6, color="#1f77b4", label="Permutation null")
+                ax.axvline(result["observed_mmd2"], color="#d62728", linewidth=2, label="Observed")
+                ax.axvline(critical, color="#ff7f0e", linewidth=2, linestyle="--", label="Critical")
+                ax.set_title("Null Distribution of MMD^2")
+                ax.set_xlabel("MMD^2")
+                ax.set_ylabel("Count")
+                ax.legend(loc="best", fontsize=8)
+                st.pyplot(fig, use_container_width=True)
+                plt.close(fig)
+            else:
+                st.info("Enable 'Show permutation null-distribution plot' to display the diagnostic plot.")
 
 
 @st.fragment
 def render_ui():
     st.title("External Validation: Latent MMD")
-    st.markdown(
-        "This widget does the following:\n"
-        "- Simulates an in-distribution dataset using the training simulator.\n"
-        "- Simulates an external dataset under a chosen misspecification scenario.\n"
-        "- Embeds both datasets with the same trained embedding network.\n"
-        "- Computes Gaussian-kernel MMD and a permutation-test p-value for a quantitative two-sample decision."
-    )
-    st.markdown(
-        "Quantitatively compare latent embeddings from in-distribution simulated data and misspecified "
-        "external data using Gaussian-kernel MMD with median heuristic bandwidth."
+    st.caption(
+        "Guided flow: 1) Configure scenario, 2) Run statistical test, 3) Read the verdict card. "
+        "MMD gives a formal two-sample decision via permutation p-value."
     )
 
     base_dir, model_names = _available_model_dirs()
@@ -214,34 +350,63 @@ def render_ui():
         st.error("No model folders found in app/data/models.")
         return
 
-    c1, c2, c3 = st.columns([2, 2, 2])
-    with c1:
-        trained_model_name = st.selectbox("Embedding network from model", model_names)
-    with c2:
-        mode = st.selectbox(
-            "External misspecification mode",
-            ["Parameter shift", "Structure shift"],
-        )
-    with c3:
-        num_images = st.slider("Images per dataset", 100, 3000, 1000, step=100)
+    cfg_left, cfg_right = st.columns(2, gap="large")
+
+    with cfg_left:
+        c1, c2, c3 = st.columns([2, 2, 1.5])
+        with c1:
+            trained_model_name = st.selectbox("Embedding network from model", model_names)
+        with c2:
+            mode = st.selectbox(
+                "External misspecification mode",
+                ["Parameter shift", "Structure shift"],
+                help="Parameter shift perturbs imaging/noise parameters while keeping structures fixed. "
+                "Structure shift changes the structure source model.",
+            )
+        with c3:
+            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
+
+        with st.expander("Advanced runtime and test settings", expanded=False):
+            t1, t2, t3, t4 = st.columns(4)
+            with t1:
+                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
+            with t2:
+                alpha = st.slider("Significance alpha", 0.001, 0.2, 0.05, step=0.001)
+            with t3:
+                num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10)
+            with t4:
+                perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50)
+
+            d1, d2 = st.columns(2)
+            with d1:
+                deterministic_permutations = st.checkbox(
+                    "Deterministic permutation sampling",
+                    value=True,
+                    help="If enabled, subset sampling and permutation draws are reproduced from a fixed seed.",
+                )
+            with d2:
+                permutation_seed = st.number_input(
+                    "Permutation seed",
+                    min_value=0,
+                    max_value=1_000_000,
+                    value=42,
+                    step=1,
+                    disabled=not deterministic_permutations,
+                )
+
+            show_permutation_plot = st.checkbox(
+                "Show permutation null-distribution plot",
+                value=True,
+                help="Optional diagnostic: observed MMD^2 compared to shuffled-label null distribution.",
+            )
 
     model_dir = os.path.join(base_dir, trained_model_name)
 
     try:
-        trained_simulator, posterior, train_params = load_embedding_assets(model_dir)
+        trained_simulator, posterior, _ = load_embedding_assets(model_dir)
     except Exception as err:
         st.error(f"Failed to load trained simulator/estimator for {trained_model_name}: {err}")
         return
-
-    batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
-
-    t1, t2, t3 = st.columns(3)
-    with t1:
-        alpha = st.slider("Test significance alpha", 0.001, 0.2, 0.05, step=0.001)
-    with t2:
-        num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10)
-    with t3:
-        perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50)
 
     structure_simulator = None
     alt_name = trained_model_name
@@ -251,37 +416,98 @@ def render_ui():
     b_factor_scale = 1.0
     snr_scale = 1.0
 
-    if mode == "Structure shift":
-        default_alt = model_names[0]
-        if len(model_names) > 1 and model_names[0] == trained_model_name:
-            default_alt = model_names[1]
-        alt_name = st.selectbox(
-            "External structure source model",
-            model_names,
-            index=model_names.index(default_alt),
-        )
-        alt_model_dir = os.path.join(base_dir, alt_name)
-        try:
-            structure_simulator = load_simulator_only(alt_model_dir)
-        except Exception as err:
-            st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
-            return
-    else:
-        st.info(
-            "Parameter shift uses multiplicative scale factors, not absolute replacement values. "
-            "Example: defocus scale = 0.8 means each sampled defocus is multiplied by 0.8."
-        )
-        p1, p2, p3, p4, p5 = st.columns(5)
-        with p1:
-            sigma_scale = st.slider("Sigma scale (x sampled sigma)", 0.1, 5.0, 1.0, step=0.1)
-        with p2:
-            shift_scale = st.slider("Shift scale (x sampled shift)", 0.1, 5.0, 1.0, step=0.1)
-        with p3:
-            defocus_scale = st.slider("Defocus scale (x sampled defocus)", 0.1, 5.0, 1.0, step=0.1)
-        with p4:
-            b_factor_scale = st.slider("B-factor scale (x sampled B-factor)", 0.1, 5.0, 1.0, step=0.1)
-        with p5:
-            snr_scale = st.slider("SNR scale (x linear SNR)", 0.1, 5.0, 1.0, step=0.1)
+    if "mmd_sigma_scale" not in st.session_state:
+        st.session_state.mmd_sigma_scale = 1.0
+    if "mmd_shift_scale" not in st.session_state:
+        st.session_state.mmd_shift_scale = 1.0
+    if "mmd_defocus_scale" not in st.session_state:
+        st.session_state.mmd_defocus_scale = 1.0
+    if "mmd_b_factor_scale" not in st.session_state:
+        st.session_state.mmd_b_factor_scale = 1.0
+    if "mmd_snr_scale" not in st.session_state:
+        st.session_state.mmd_snr_scale = 1.0
+
+    with cfg_right:
+        if mode == "Structure shift":
+            st.markdown("External Structure Source")
+            default_alt = model_names[0]
+            if len(model_names) > 1 and model_names[0] == trained_model_name:
+                default_alt = model_names[1]
+            alt_name = st.selectbox(
+                "External structure source model",
+                model_names,
+                index=model_names.index(default_alt),
+            )
+            alt_model_dir = os.path.join(base_dir, alt_name)
+            try:
+                structure_simulator = load_simulator_only(alt_model_dir)
+            except Exception as err:
+                st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
+                return
+        else:
+            st.markdown("Parameter Shift Preset")
+            preset = st.selectbox(
+                "Select a preset or choose Manual to customize:",
+                [
+                    "Manual",
+                    "Conservative (Mild shift)",
+                    "Moderate (Medium shift)",
+                    "Aggressive (Strong shift)",
+                    "Overblur (Only sigma)",
+                    "Low SNR (Only noise)",
+                ],
+                key="mmd_preset",
+                on_change=_apply_preset,
+                help="Each scale is multiplicative, e.g. defocus 0.8x means sampled defocus values are multiplied by 0.8.",
+            )
+
+            if "mmd_sync_slider_keys" not in st.session_state:
+                st.session_state.mmd_sync_slider_keys = False
+
+            if "mmd_slider_sigma" not in st.session_state:
+                st.session_state.mmd_slider_sigma = st.session_state.mmd_sigma_scale
+            if "mmd_slider_shift" not in st.session_state:
+                st.session_state.mmd_slider_shift = st.session_state.mmd_shift_scale
+            if "mmd_slider_defocus" not in st.session_state:
+                st.session_state.mmd_slider_defocus = st.session_state.mmd_defocus_scale
+            if "mmd_slider_b_factor" not in st.session_state:
+                st.session_state.mmd_slider_b_factor = st.session_state.mmd_b_factor_scale
+            if "mmd_slider_snr" not in st.session_state:
+                st.session_state.mmd_slider_snr = st.session_state.mmd_snr_scale
+
+            if st.session_state.mmd_sync_slider_keys:
+                st.session_state.mmd_slider_sigma = st.session_state.mmd_sigma_scale
+                st.session_state.mmd_slider_shift = st.session_state.mmd_shift_scale
+                st.session_state.mmd_slider_defocus = st.session_state.mmd_defocus_scale
+                st.session_state.mmd_slider_b_factor = st.session_state.mmd_b_factor_scale
+                st.session_state.mmd_slider_snr = st.session_state.mmd_snr_scale
+                st.session_state.mmd_sync_slider_keys = False
+
+            with st.expander("Shift parameter controls", expanded=True):
+                p1, p2 = st.columns(2)
+                with p1:
+                    st.slider("Sigma scale", 0.1, 5.0, step=0.1, key="mmd_slider_sigma")
+                    st.slider("Shift scale", 0.1, 5.0, step=0.1, key="mmd_slider_shift")
+                    st.slider("Defocus scale", 0.1, 5.0, step=0.1, key="mmd_slider_defocus")
+                with p2:
+                    st.slider("B-factor scale", 0.1, 5.0, step=0.1, key="mmd_slider_b_factor")
+                    st.slider("SNR scale", 0.1, 5.0, step=0.1, key="mmd_slider_snr")
+
+                if st.button("Reset manual values to 1.0", key="mmd_reset_manual", use_container_width=True):
+                    _reset_manual_scales()
+                    st.rerun()
+
+            sigma_scale = st.session_state.mmd_slider_sigma
+            shift_scale = st.session_state.mmd_slider_shift
+            defocus_scale = st.session_state.mmd_slider_defocus
+            b_factor_scale = st.session_state.mmd_slider_b_factor
+            snr_scale = st.session_state.mmd_slider_snr
+
+            st.session_state.mmd_sigma_scale = sigma_scale
+            st.session_state.mmd_shift_scale = shift_scale
+            st.session_state.mmd_defocus_scale = defocus_scale
+            st.session_state.mmd_b_factor_scale = b_factor_scale
+            st.session_state.mmd_snr_scale = snr_scale
 
     if mode == "Parameter shift":
         misspecified = any(
@@ -303,19 +529,24 @@ def render_ui():
             else "External data is NOT labeled misspecified: external structure source equals training model."
         )
 
-    st.markdown("Misspecification label status")
-    if misspecified:
-        st.warning(reason)
-    else:
-        st.info(reason)
+    with cfg_right:
+        st.markdown("Scenario label")
+        if misspecified:
+            st.warning(reason)
+        else:
+            st.info(reason)
 
-    run_btn = st.button("Generate datasets and compute MMD", type="primary")
+    run_btn = st.button("Run MMD validation", type="primary", use_container_width=True)
 
     if not run_btn:
-        st.info("Set misspecification controls, then compute MMD.")
+        if "mmd_cached_result" in st.session_state:
+            st.info("Showing cached MMD result from the last run. Click 'Run MMD validation' to refresh.")
+            _render_mmd_results(st.session_state.mmd_cached_result)
+        else:
+            st.info("Set misspecification controls, then run MMD.")
         return
 
-    with st.spinner("Simulating datasets, computing latent embeddings, computing MMD..."):
+    with st.spinner("Simulating datasets (step 1/3)..."):
         sim_images = trained_simulator.simulate(num_images, batch_size=batch_size)
 
         if mode == "Structure shift":
@@ -339,6 +570,7 @@ def render_ui():
                 snr_scale=snr_scale,
             )
 
+    with st.spinner("Computing latent embeddings (step 2/3)..."):
         z_sim = est_utils.compute_latent_repr(
             estimator=posterior,
             images=sim_images,
@@ -352,84 +584,51 @@ def render_ui():
             device="cpu",
         )
 
-        mmd2, mmd, epsilon = compute_mmd_gaussian_median(z_sim, z_ext)
+    with st.spinner("Running MMD test (step 3/3)..."):
+        mmd2, _, epsilon = compute_mmd_gaussian_median(z_sim, z_ext)
+
+        rng = None
+        if deterministic_permutations:
+            rng = torch.Generator(device="cpu")
+            rng.manual_seed(int(permutation_seed))
 
         k = min(perm_subset, z_sim.shape[0], z_ext.shape[0])
-        idx_sim = torch.randperm(z_sim.shape[0])[:k]
-        idx_ext = torch.randperm(z_ext.shape[0])[:k]
+        idx_sim = torch.randperm(z_sim.shape[0], generator=rng)[:k] if rng is not None else torch.randperm(z_sim.shape[0])[:k]
+        idx_ext = torch.randperm(z_ext.shape[0], generator=rng)[:k] if rng is not None else torch.randperm(z_ext.shape[0])[:k]
         z_sim_perm = z_sim[idx_sim]
         z_ext_perm = z_ext[idx_ext]
-        observed_mmd2_sub, p_value = mmd_permutation_p_value(
+        observed_mmd2, p_value, exceed, null_distribution = mmd_permutation_p_value(
             z_sim_perm,
             z_ext_perm,
             epsilon,
             num_permutations=num_permutations,
+            rng=rng,
+            return_null_distribution=show_permutation_plot,
         )
         reject_h0 = p_value < alpha
 
-    metrics = st.columns(5)
-    metrics[0].metric("MMD^2", f"{mmd2:.6f}")
-    metrics[1].metric("MMD", f"{mmd:.6f}")
-    metrics[2].metric("Bandwidth epsilon", f"{epsilon:.6f}")
-    metrics[3].metric("Permutation p-value", f"{p_value:.4f}")
-    metrics[4].metric("Two-sample test", "Reject H0" if reject_h0 else "Do not reject H0")
-
-    if reject_h0:
-        st.error(
-            "Failed test: MMD permutation two-sample test rejected H0 at the selected alpha, "
-            "indicating a statistically significant distribution mismatch in latent space."
-        )
-    else:
-        st.success(
-            "No failed two-sample test at the selected alpha: the MMD permutation test did not reject H0."
-        )
-
-    st.caption(
-        "If MMD rejects very often, this can be normal when misspecification is strong, sample size is large, "
-        "or alpha is generous. For a baseline sanity check, set all scales to 1.0 (or same structure model) "
-        "and rerun."
-    )
-
-    st.caption(
-        "Interpretation: scenario label ('misspecified') is set by your controls, while test failure comes from "
-        "the MMD permutation p-value. These are related but not identical concepts."
-    )
-
-    with st.expander("How to read this without confusion", expanded=False):
-        st.markdown(
-            "- Scenario label: tells how external data was generated (by construction).\n"
-            "- Statistical test result: tells whether latent distributions differ significantly.\n"
-            "- You can have misspecified-by-construction data without test rejection if shift is weak/noisy.\n"
-            "- You can occasionally reject H0 under non-misspecified setup due to finite-sample randomness.\n"
-            "- Use both: generation context + p-value decision."
-        )
-
-    z_sim_np = z_sim.numpy().flatten()
-    z_ext_np = z_ext.numpy().flatten()
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(
-        z_sim_np,
-        bins=80,
-        density=True,
-        alpha=0.45,
-        color="#1f77b4",
-        label="Simulated (in-distribution)",
-    )
-    ax.hist(
-        z_ext_np,
-        bins=80,
-        density=True,
-        alpha=0.45,
-        color="#ff7f0e",
-        label="External (misspecified)",
-    )
-    ax.set_title("Marginal latent value comparison")
-    ax.set_xlabel("Latent value")
-    ax.set_ylabel("Density")
-    ax.legend(loc="best")
-    st.pyplot(fig)
-    plt.close(fig)
+    verdict_kind, verdict_title, verdict_text = _build_mmd_verdict(misspecified, reject_h0)
+    result = {
+        "p_value": p_value,
+        "reject_h0": reject_h0,
+        "mmd2": mmd2,
+        "verdict_kind": verdict_kind,
+        "verdict_title": verdict_title,
+        "verdict_text": verdict_text,
+        "misspecified": misspecified,
+        "reason": reason,
+        "observed_mmd2": observed_mmd2,
+        "exceed": exceed,
+        "num_permutations": num_permutations,
+        "deterministic_permutations": deterministic_permutations,
+        "permutation_seed": permutation_seed,
+        "k": k,
+        "show_permutation_plot": show_permutation_plot,
+        "null_distribution": null_distribution,
+        "alpha": alpha,
+    }
+    st.session_state.mmd_cached_result = result
+    _render_mmd_results(result)
 
 
 if __name__ == "__main__":

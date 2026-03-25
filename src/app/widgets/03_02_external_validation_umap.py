@@ -55,6 +55,21 @@ def _apply_preset():
         st.session_state.umap_b_factor_scale = 1.0
         st.session_state.umap_snr_scale = 0.3
 
+    # Defer widget-key synchronization to the next rerun before sliders are instantiated.
+    st.session_state.umap_sync_slider_keys = True
+
+
+def _reset_manual_scales():
+    """Reset manual parameter scales to neutral (1.0)."""
+    st.session_state.umap_sigma_scale = 1.0
+    st.session_state.umap_shift_scale = 1.0
+    st.session_state.umap_defocus_scale = 1.0
+    st.session_state.umap_b_factor_scale = 1.0
+    st.session_state.umap_snr_scale = 1.0
+
+    # Sync slider widget keys safely on the next rerun.
+    st.session_state.umap_sync_slider_keys = True
+
 
 def _available_model_dirs():
     base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
@@ -215,6 +230,76 @@ def _build_verdict(misspecified, norm_centroid, nn_separation):
     return "warn", "Intermediate", "Some separation is present, but not decisive."
 
 
+def _render_umap_results(result):
+    z_sim_2d = result["z_sim_2d"]
+    z_ext_2d = result["z_ext_2d"]
+
+    fig, ax = plt.subplots(figsize=(6.2, 4.6))
+    ax.scatter(
+        z_sim_2d[:, 0],
+        z_sim_2d[:, 1],
+        s=7,
+        alpha=0.42,
+        color="#1f77b4",
+        label="In-distribution",
+    )
+    ax.scatter(
+        z_ext_2d[:, 0],
+        z_ext_2d[:, 1],
+        s=7,
+        alpha=0.42,
+        color="#ff7f0e",
+        label="External",
+    )
+    ax.set_title("Joint UMAP Latent Projection")
+    ax.set_xlabel("UMAP-1")
+    ax.set_ylabel("UMAP-2")
+    ax.legend(loc="best")
+    st.pyplot(fig, use_container_width=False)
+    plt.close(fig)
+
+    st.markdown("### Result Summary")
+    v1, v2, v3 = st.columns(3)
+    with v1:
+        st.metric("Centroid distance", f"{result['centroid_dist']:.3f}")
+    with v2:
+        st.metric("Normalized separation", f"{result['normalized_centroid']:.3f}")
+    with v3:
+        st.metric("NN separation ratio", f"{result['nn_separation']:.3f}")
+
+    if result["verdict_kind"] == "good":
+        st.success(f"{result['verdict_title']}: {result['verdict_text']}")
+    elif result["verdict_kind"] == "bad":
+        st.error(f"{result['verdict_title']}: {result['verdict_text']}")
+    else:
+        st.warning(f"{result['verdict_title']}: {result['verdict_text']}")
+
+    st.caption(
+        "Scenario label: "
+        + ("misspecified" if result["misspecified"] else "not misspecified")
+        + ". UMAP is qualitative, not a formal hypothesis test."
+    )
+
+    with st.expander("Interpretation help and thresholds", expanded=False):
+        st.write(result["reason"])
+        if result["overlap_volume_ratio"] is not None:
+            st.write(
+                f"Hull overlap ratio: {result['overlap_volume_ratio']:.3f} "
+                "(closer to 1 means stronger geometric overlap)."
+            )
+        st.markdown(
+            "#### Key points:\n"
+            "- **Local ≫ Global:** UMAP preserves local neighborhoods perfectly, but global distances are distorted.\n"
+            "  Separation ≠ proof of difference; overlap ≠ proof of similarity.\n\n"
+            "- **Primary decision rule here:**\n"
+            "  Good if expected scenario (misspecified or not) matches measured separation.\n\n"
+            "- **Sample Size Matters:** Rare modes only appear with sufficient images.\n"
+            "  Use 1000+ for stable judgement, 200-500 for quick checks.\n\n"
+            "- **Complementary Test:** UMAP is *not* a statistical test. For definitive answers,\n"
+            "  use the **MMD widget** (quantitative + p-value)."
+        )
+
+
 @st.fragment
 def render_ui():
     st.title("External Validation: Latent UMAP Overlap")
@@ -228,20 +313,31 @@ def render_ui():
         st.error("No model folders found in app/data/models.")
         return
 
-    # Step 1: Basic scenario controls
-    c1, c2, c3 = st.columns([2, 2, 1.5])
-    with c1:
-        trained_model_name = st.selectbox("Embedding network from model", model_names)
-    with c2:
-        mode = st.selectbox(
-            "External misspecification mode",
-            ["Parameter shift", "Structure shift"],
-            help="Shift type quick guide: **Parameter shift** keeps the same structures but perturbs imaging/noise parameters "
-        "(sigma, shift, defocus, B-factor, SNR). **Structure shift** changes the underlying structure source model "
-        "(different conformations), while keeping the imaging pipeline consistent."
-        )
-    with c3:
-        num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
+    cfg_left, cfg_right = st.columns(2, gap="medium")
+
+    with cfg_left:
+        c1, c2, c3 = st.columns([2, 2, 1.5])
+        with c1:
+            trained_model_name = st.selectbox("Embedding network from model", model_names)
+        with c2:
+            mode = st.selectbox(
+                "External misspecification mode",
+                ["Parameter shift", "Structure shift"],
+                help="Shift type quick guide: **Parameter shift** keeps the same structures but perturbs imaging/noise parameters "
+                "(sigma, shift, defocus, B-factor, SNR). **Structure shift** changes the underlying structure source model "
+                "(different conformations), while keeping the imaging pipeline consistent.",
+            )
+        with c3:
+            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
+
+        with st.expander("Advanced runtime and UMAP settings", expanded=False):
+            a1, a2, a3 = st.columns(3)
+            with a1:
+                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
+            with a2:
+                n_neighbors = st.slider("UMAP n_neighbors", 5, 100, 30)
+            with a3:
+                min_dist = st.slider("UMAP min_dist", 0.0, 0.99, 0.1, step=0.01)
 
     model_dir = os.path.join(base_dir, trained_model_name)
 
@@ -250,15 +346,6 @@ def render_ui():
     except Exception as err:
         st.error(f"Failed to load trained simulator/estimator for {trained_model_name}: {err}")
         return
-
-    with st.expander("Advanced runtime and UMAP settings", expanded=False):
-        a1, a2, a3 = st.columns(3)
-        with a1:
-            batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
-        with a2:
-            n_neighbors = st.slider("UMAP n_neighbors", 5, 100, 30)
-        with a3:
-            min_dist = st.slider("UMAP min_dist", 0.0, 0.99, 0.1, step=0.01)
 
     structure_simulator = None
     alt_name = trained_model_name
@@ -275,76 +362,94 @@ def render_ui():
     if "umap_snr_scale" not in st.session_state:
         st.session_state.umap_snr_scale = 1.0
 
-    # Step 1b: Scenario details
-    if mode == "Parameter shift":
-        st.markdown("Parameter Shift Preset")
-        preset_options = [
-            "Manual",
-            "Conservative (Mild shift)",
-            "Moderate (Medium shift)",
-            "Aggressive (Strong shift)",
-            "Overblur (Only sigma)",
-            "Low SNR (Only noise)",
-        ]
-        
-        preset = st.selectbox(
-            "Select a preset or choose Manual to customize:",
-            preset_options,
-            key="umap_preset",
-            on_change=_apply_preset,
-            help="Scale the parameters by a **factor** to _fabricate_ an experiment."
-        )
-        
-        # Keep detailed manipulation hidden unless explicitly requested.
-        if preset == "Manual":
-            with st.expander("Manual parameter controls", expanded=True):
+    with cfg_right:
+        # Step 1b: Shift controls
+        if mode == "Parameter shift":
+            st.markdown("Parameter Shift Preset")
+            preset_options = [
+                "Manual",
+                "Conservative (Mild shift)",
+                "Moderate (Medium shift)",
+                "Aggressive (Strong shift)",
+                "Overblur (Only sigma)",
+                "Low SNR (Only noise)",
+            ]
+            
+            preset = st.selectbox(
+                "Select a preset or choose Manual to customize:",
+                preset_options,
+                key="umap_preset",
+                on_change=_apply_preset,
+                help="Scale the parameters by a **factor** to _fabricate_ an experiment."
+            )
+
+            if "umap_sync_slider_keys" not in st.session_state:
+                st.session_state.umap_sync_slider_keys = False
+
+            if "umap_slider_sigma" not in st.session_state:
+                st.session_state.umap_slider_sigma = st.session_state.umap_sigma_scale
+            if "umap_slider_shift" not in st.session_state:
+                st.session_state.umap_slider_shift = st.session_state.umap_shift_scale
+            if "umap_slider_defocus" not in st.session_state:
+                st.session_state.umap_slider_defocus = st.session_state.umap_defocus_scale
+            if "umap_slider_bfactor" not in st.session_state:
+                st.session_state.umap_slider_bfactor = st.session_state.umap_b_factor_scale
+            if "umap_slider_snr" not in st.session_state:
+                st.session_state.umap_slider_snr = st.session_state.umap_snr_scale
+
+            if st.session_state.umap_sync_slider_keys:
+                st.session_state.umap_slider_sigma = st.session_state.umap_sigma_scale
+                st.session_state.umap_slider_shift = st.session_state.umap_shift_scale
+                st.session_state.umap_slider_defocus = st.session_state.umap_defocus_scale
+                st.session_state.umap_slider_bfactor = st.session_state.umap_b_factor_scale
+                st.session_state.umap_slider_snr = st.session_state.umap_snr_scale
+                st.session_state.umap_sync_slider_keys = False
+
+            with st.expander("Shift parameter controls", expanded=True):
                 p1, p2 = st.columns(2)
                 with p1:
-                    sigma_scale = st.slider("Sigma scale", 0.1, 5.0, st.session_state.umap_sigma_scale, step=0.1, key="slider_sigma")
-                    shift_scale = st.slider("Shift scale", 0.1, 5.0, st.session_state.umap_shift_scale, step=0.1, key="slider_shift")
-                    defocus_scale = st.slider("Defocus scale", 0.1, 5.0, st.session_state.umap_defocus_scale, step=0.1, key="slider_defocus")
+                    st.slider("Sigma scale", 0.1, 5.0, step=0.1, key="umap_slider_sigma")
+                    st.slider("Shift scale", 0.1, 5.0, step=0.1, key="umap_slider_shift")
+                    st.slider("Defocus scale", 0.1, 5.0, step=0.1, key="umap_slider_defocus")
                 with p2:
-                    b_factor_scale = st.slider("B-factor scale", 0.1, 5.0, st.session_state.umap_b_factor_scale, step=0.1, key="slider_bfactor")
-                    snr_scale = st.slider("SNR scale", 0.1, 5.0, st.session_state.umap_snr_scale, step=0.1, key="slider_snr")
-            
-            # Update session state
+                    st.slider("B-factor scale", 0.1, 5.0, step=0.1, key="umap_slider_bfactor")
+                    st.slider("SNR scale", 0.1, 5.0, step=0.1, key="umap_slider_snr")
+
+                if st.button("Reset manual values to 1.0", key="umap_reset_manual", use_container_width=True):
+                    _reset_manual_scales()
+                    st.rerun()
+
+            sigma_scale = st.session_state.umap_slider_sigma
+            shift_scale = st.session_state.umap_slider_shift
+            defocus_scale = st.session_state.umap_slider_defocus
+            b_factor_scale = st.session_state.umap_slider_bfactor
+            snr_scale = st.session_state.umap_slider_snr
+
             st.session_state.umap_sigma_scale = sigma_scale
             st.session_state.umap_shift_scale = shift_scale
             st.session_state.umap_defocus_scale = defocus_scale
             st.session_state.umap_b_factor_scale = b_factor_scale
             st.session_state.umap_snr_scale = snr_scale
-        else:
-            # Use preset values from session state
-            sigma_scale = st.session_state.umap_sigma_scale
-            shift_scale = st.session_state.umap_shift_scale
-            defocus_scale = st.session_state.umap_defocus_scale
-            b_factor_scale = st.session_state.umap_b_factor_scale
-            snr_scale = st.session_state.umap_snr_scale
-            # Display preset values as info
-            st.info(
-                f"Preset values: sigma {sigma_scale:.2f}x, shift {shift_scale:.2f}x, "
-                f"defocus {defocus_scale:.2f}x, B-factor {b_factor_scale:.2f}x, SNR {snr_scale:.2f}x"
-            )
 
-    if mode == "Structure shift":
-        st.markdown("External Structure Source")
-        default_alt = model_names[0]
-        if len(model_names) > 1 and model_names[0] == trained_model_name:
-            default_alt = model_names[1]
-        alt_name = st.selectbox(
-            "Select an external structure source model:",
-            model_names,
-            index=model_names.index(default_alt),
-        )
-        alt_model_dir = os.path.join(base_dir, alt_name)
-        try:
-            structure_simulator = load_simulator_only(alt_model_dir)
-        except Exception as err:
-            st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
-            return
-        
-        # Dummy values for consistency
-        sigma_scale = shift_scale = defocus_scale = b_factor_scale = snr_scale = 1.0
+        if mode == "Structure shift":
+            st.markdown("External Structure Source")
+            default_alt = model_names[0]
+            if len(model_names) > 1 and model_names[0] == trained_model_name:
+                default_alt = model_names[1]
+            alt_name = st.selectbox(
+                "Select an external structure source model:",
+                model_names,
+                index=model_names.index(default_alt),
+            )
+            alt_model_dir = os.path.join(base_dir, alt_name)
+            try:
+                structure_simulator = load_simulator_only(alt_model_dir)
+            except Exception as err:
+                st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
+                return
+            
+            # Dummy values for consistency
+            sigma_scale = shift_scale = defocus_scale = b_factor_scale = snr_scale = 1.0
 
     # === Determine misspecification label ===
     if mode == "Parameter shift":
@@ -366,10 +471,21 @@ def render_ui():
             else "External data is NOT misspecified: same structure source."
         )
 
+    with cfg_right:
+        st.markdown("Scenario label")
+        if misspecified:
+            st.warning(reason)
+        else:
+            st.info(reason)
+
     run_btn = st.button("Run UMAP validation", type="primary", use_container_width=True)
 
     if not run_btn:
-        st.info("Set misspecification controls, then run UMAP.")
+        if "umap_cached_result" in st.session_state:
+            st.info("Showing cached UMAP result from the last run. Click 'Run UMAP validation' to refresh.")
+            _render_umap_results(st.session_state.umap_cached_result)
+        else:
+            st.info("Set misspecification controls, then run UMAP.")
         return
 
     try:
@@ -440,67 +556,21 @@ def render_ui():
         nn_separation,
     )
 
-    fig, ax = plt.subplots(figsize=(6.2, 4.6))
-    ax.scatter(
-        z_sim_2d[:, 0],
-        z_sim_2d[:, 1],
-        s=7,
-        alpha=0.42,
-        color="#1f77b4",
-        label="In-distribution",
-    )
-    ax.scatter(
-        z_ext_2d[:, 0],
-        z_ext_2d[:, 1],
-        s=7,
-        alpha=0.42,
-        color="#ff7f0e",
-        label="External",
-    )
-    ax.set_title("Joint UMAP Latent Projection")
-    ax.set_xlabel("UMAP-1")
-    ax.set_ylabel("UMAP-2")
-    ax.legend(loc="best")
-    st.pyplot(fig, use_container_width=False)
-    plt.close(fig)
-
-    st.markdown("### Result Summary")
-    v1, v2, v3 = st.columns(3)
-    with v1:
-        st.metric("Centroid distance", f"{centroid_dist:.3f}")
-    with v2:
-        st.metric("Normalized separation", f"{normalized_centroid:.3f}")
-    with v3:
-        st.metric("NN separation ratio", f"{nn_separation:.3f}")
-
-    if verdict_kind == "good":
-        st.success(f"{verdict_title}: {verdict_text}")
-    elif verdict_kind == "bad":
-        st.error(f"{verdict_title}: {verdict_text}")
-    else:
-        st.warning(f"{verdict_title}: {verdict_text}")
-
-    st.caption(
-        "Scenario label: "
-        + ("misspecified" if misspecified else "not misspecified")
-        + ". UMAP is qualitative, not a formal hypothesis test."
-    )
-
-    with st.expander("Interpretation help and thresholds", expanded=False):
-        st.write(reason)
-        if overlap_volume_ratio is not None:
-            st.write(f"Hull overlap ratio: {overlap_volume_ratio:.3f} (closer to 1 means stronger geometric overlap).")
-        st.markdown(
-            "#### Key points:\n"
-            "- **Local ≫ Global:** UMAP preserves local neighborhoods perfectly, but global distances are distorted.\n"
-            "  Separation ≠ proof of difference; overlap ≠ proof of similarity.\n\n"
-            "- **Primary decision rule here:**\n"
-            "  Good if expected scenario (misspecified or not) matches measured separation.\n\n"
-            "- **Sample Size Matters:** Rare modes only appear with sufficient images.\n"
-            "  Use 1000+ for stable judgement, 200-500 for quick checks.\n\n"
-            "- **Complementary Test:** UMAP is *not* a statistical test. For definitive answers,\n"
-            "  use the **MMD widget** (quantitative + p-value)."
-        )
+    result = {
+        "z_sim_2d": z_sim_2d,
+        "z_ext_2d": z_ext_2d,
+        "centroid_dist": centroid_dist,
+        "normalized_centroid": normalized_centroid,
+        "nn_separation": nn_separation,
+        "overlap_volume_ratio": overlap_volume_ratio,
+        "verdict_kind": verdict_kind,
+        "verdict_title": verdict_title,
+        "verdict_text": verdict_text,
+        "misspecified": misspecified,
+        "reason": reason,
+    }
+    st.session_state.umap_cached_result = result
+    _render_umap_results(result)
 
 
 if __name__ == "__main__":
