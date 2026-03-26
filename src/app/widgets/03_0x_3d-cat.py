@@ -45,7 +45,7 @@ def render():
         min_value=1, 
         max_value=10, 
         value=1, 
-        key="cat_conformation_slider"
+        key="cat3d_conformation_slider"
     )
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -63,7 +63,7 @@ def render():
         cam_distance=0,
         height=500,
         max_view_distance=1000,
-        key="cat_3d_viewer_v3"
+        key="cat3d_viewer_v3"
     )
 
 # Allow standalone execution

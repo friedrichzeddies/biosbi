@@ -12,7 +12,7 @@ import cryo_sbi.utils.estimator_utils as est_utils
 from cryo_sbi.wpa_simulator.cryo_em_simulator import CryoEmSimulator, cryo_em_simulator
 from cryo_sbi.wpa_simulator.image_generation import project_density
 
-st.set_page_config(page_title="Experiment Inference", layout="wide")
+
 
 
 def _as_float(value, fallback):
@@ -251,7 +251,8 @@ def randomize_payload_controls(simulator, state_prefix):
 def generate_image_from_payload(simulator, payload):
     idx_tensor = torch.tensor([[payload["index"]]], dtype=torch.float32)
     quat_np = R.from_euler("xyz", payload["rotation_deg_xyz"], degrees=True).as_quat()
-    quat_tensor = torch.tensor([quat_np], dtype=torch.float32)
+    # Use from_numpy + astype to avoid slow list-of-numpy-array conversion warning
+    quat_tensor = torch.from_numpy(quat_np[None].astype(np.float32))
 
     sigma_tensor = torch.tensor([[payload["sigma"]]], dtype=torch.float32)
     shift_tensor = torch.tensor([payload["shift_xy"]], dtype=torch.float32)
@@ -393,7 +394,7 @@ def render_ui():
     else:
         available_models = ["10cat_large_batch_resnet"]
 
-    selected_model_name = st.selectbox("Posterior trained on", available_models)
+    selected_model_name = st.selectbox("Posterior trained on", available_models, key="exp_inf_model_select")
     model_dir = os.path.join(models_base_dir, selected_model_name)
 
     try:
@@ -434,7 +435,7 @@ def render_ui():
 
     control_col1, control_col2 = st.columns([1, 1])
     with control_col1:
-        st.button("Random configuration", on_click=_request_random_config)
+        st.button("Random configuration", on_click=_request_random_config, key="exp_inf_random_btn")
     with control_col2:
         st.markdown("")
 
@@ -482,7 +483,7 @@ def render_ui():
         
     result = preview
 
-    overlay_clean = st.checkbox("Overlay clean density on noisy images", value=False)
+    overlay_clean = st.checkbox("Overlay clean density on noisy images", value=False, key="exp_inf_overlay_clean")
 
     col_img1, col_img2 = st.columns(2, border=True)
     with col_img1:
@@ -522,12 +523,13 @@ def render_ui():
     
     control_col1, control_col2 = st.columns([1, 1])
     with control_col1:
-        st.button("Resample training reference", on_click=_request_reference_resample)
+        st.button("Resample training reference", on_click=_request_reference_resample, key="exp_inf_resample_btn")
     with control_col2:
         run_inference = st.button(
             "Compute posterior for current preview",
             type="primary",
             disabled=posterior is None,
+            key="exp_inf_run_btn",
         )
 
     if run_inference:
@@ -687,4 +689,5 @@ def render_ui():
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="Experiment Inference", layout="wide")
     render_ui()

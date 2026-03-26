@@ -20,52 +20,50 @@ def load_widget_file(filepath, func_name):
     func()
 
 def main():
-    st.set_page_config(page_title="CryoSBI Cat Projector", layout="wide")
+    st.set_page_config(page_title="CryoSBI - Chapter 3: Inference & Validation", layout="wide")
     
     # Load intro text
-    intro_path = os.path.join(os.path.dirname(__file__), "content/", "01_intro.md")
+    intro_path = os.path.join(os.path.dirname(__file__), "content", "03_0x_internal-validation-theory.md")
     if os.path.exists(intro_path):
         with open(intro_path, "r", encoding="utf-8") as f:
             st.markdown(f.read())
     else:
-        st.warning("intro.md not found.")
-        
-    st.divider()
-    
-    # Run the interactive widget
-    #cat_projector_widget()
-    cat_resnet_summary_widget(instance_id="main")
+        st.info("Validation theory content loaded from internal-validation-theory.md")
 
     st.divider()
 
-    # run single and double wave animation
-    # 1. Huygens
-    single_wave()
-    st.markdown("comments and hand-off to double")
-    huygens_fresnel_widget()
-    multiple_sources_wave()
+    # --- Chapter 3: Inference and Validation ---
+    
+    st.header("3D Cat Model Visualization")
+    load_widget_file("widgets/03_0x_3d-cat.py", "render")
     st.divider()
 
-    # 2. Fraunhofer
-    fraunhofer_diffraction_widget()
-    st.divider()
-    
-    # 3. 1D Fourier Decomposition
-    load_widget_file("widgets/02_0x_1D-fourier-decomp.py", "render")
-    st.divider()
-    
-    # 4. 2D Fourier Decomposition
-    load_widget_file("widgets/02_0x_2D-fourier-decomp.py", "render")
-    st.divider()
-    
-    # 5. Masked 2D Fourier
-    load_widget_file("widgets/02_0x_masked-2d-fourier.py", "render")
-    st.divider()
-    
-    # 6. Ill-Posedness Conformations
+    st.header("Ill-Posedness in 2D Projections")
     load_widget_file("widgets/03_01_ill-posedness.py", "render_ui")
     st.divider()
 
+    st.header("Full Posterior Inference Explorer")
+    load_widget_file("widgets/03_exp_inference.py", "render_ui")
+    st.divider()
+
+    st.header("ResNet Latent Space Summary")
+    load_widget_file("widgets/03_0x_cat_resnet_summary.py", "render")
+    st.divider()
+
+    st.header("External Validation: UMAP Embedding")
+    load_widget_file("widgets/03_02_external_validation_umap.py", "render_ui")
+    st.divider()
+
+    st.header("External Validation: MMD Metrics")
+    load_widget_file("widgets/03_03_external_validation_mmd.py", "render_ui")
+    st.divider()
+
+    st.header("SBC: Theoretical Calibration Check")
+    load_widget_file("widgets/03_0x_simulation-based-calibration.py", "render")
+    st.divider()
+
+    st.header("SBC: Real-Data Conformation Calibration")
+    load_widget_file("widgets/03_10_sbc_own_data.py", "render")
     st.divider()
 
 if __name__ == "__main__":

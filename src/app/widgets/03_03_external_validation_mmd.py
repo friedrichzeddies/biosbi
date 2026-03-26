@@ -9,58 +9,7 @@ import torch
 import cryo_sbi.utils.estimator_utils as est_utils
 from cryo_sbi.wpa_simulator.cryo_em_simulator import CryoEmSimulator, cryo_em_simulator
 
-st.set_page_config(page_title="External Validation: MMD", layout="wide")
 
-
-def _apply_preset():
-    """Apply parameter shifts based on selected preset."""
-    preset = st.session_state.get("mmd_preset", "Manual")
-
-    if "Conservative" in preset:
-        st.session_state.mmd_sigma_scale = 0.9
-        st.session_state.mmd_shift_scale = 0.95
-        st.session_state.mmd_defocus_scale = 1.0
-        st.session_state.mmd_b_factor_scale = 0.95
-        st.session_state.mmd_snr_scale = 1.1
-    elif "Moderate" in preset:
-        st.session_state.mmd_sigma_scale = 0.75
-        st.session_state.mmd_shift_scale = 0.8
-        st.session_state.mmd_defocus_scale = 1.3
-        st.session_state.mmd_b_factor_scale = 0.7
-        st.session_state.mmd_snr_scale = 0.8
-    elif "Aggressive" in preset:
-        st.session_state.mmd_sigma_scale = 2.0
-        st.session_state.mmd_shift_scale = 2.5
-        st.session_state.mmd_defocus_scale = 0.5
-        st.session_state.mmd_b_factor_scale = 3.0
-        st.session_state.mmd_snr_scale = 0.3
-    elif "Overblur" in preset:
-        st.session_state.mmd_sigma_scale = 2.5
-        st.session_state.mmd_shift_scale = 1.0
-        st.session_state.mmd_defocus_scale = 1.0
-        st.session_state.mmd_b_factor_scale = 1.0
-        st.session_state.mmd_snr_scale = 1.0
-    elif "Low SNR" in preset:
-        st.session_state.mmd_sigma_scale = 1.0
-        st.session_state.mmd_shift_scale = 1.0
-        st.session_state.mmd_defocus_scale = 1.0
-        st.session_state.mmd_b_factor_scale = 1.0
-        st.session_state.mmd_snr_scale = 0.3
-
-    # Defer widget-key synchronization to the next rerun before sliders are instantiated.
-    st.session_state.mmd_sync_slider_keys = True
-
-
-def _reset_manual_scales():
-    """Reset manual parameter scales to neutral (1.0)."""
-    st.session_state.mmd_sigma_scale = 1.0
-    st.session_state.mmd_shift_scale = 1.0
-    st.session_state.mmd_defocus_scale = 1.0
-    st.session_state.mmd_b_factor_scale = 1.0
-    st.session_state.mmd_snr_scale = 1.0
-
-    # Sync slider widget keys safely on the next rerun.
-    st.session_state.mmd_sync_slider_keys = True
 
 
 def _available_model_dirs():
@@ -350,55 +299,17 @@ def render_ui():
         st.error("No model folders found in app/data/models.")
         return
 
-    cfg_left, cfg_right = st.columns(2, gap="large")
-
-    with cfg_left:
-        c1, c2, c3 = st.columns([2, 2, 1.5])
-        with c1:
-            trained_model_name = st.selectbox("Embedding network from model", model_names)
-        with c2:
-            mode = st.selectbox(
-                "External misspecification mode",
-                ["Parameter shift", "Structure shift"],
-                help="Parameter shift perturbs imaging/noise parameters while keeping structures fixed. "
-                "Structure shift changes the structure source model.",
-            )
-        with c3:
-            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
-
-        with st.expander("Advanced runtime and test settings", expanded=False):
-            t1, t2, t3, t4 = st.columns(4)
-            with t1:
-                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
-            with t2:
-                alpha = st.slider("Significance alpha", 0.001, 0.2, 0.05, step=0.001)
-            with t3:
-                num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10)
-            with t4:
-                perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50)
-
-            d1, d2 = st.columns(2)
-            with d1:
-                deterministic_permutations = st.checkbox(
-                    "Deterministic permutation sampling",
-                    value=True,
-                    help="If enabled, subset sampling and permutation draws are reproduced from a fixed seed.",
-                )
-            with d2:
-                permutation_seed = st.number_input(
-                    "Permutation seed",
-                    min_value=0,
-                    max_value=1_000_000,
-                    value=42,
-                    step=1,
-                    disabled=not deterministic_permutations,
-                )
-
-            show_permutation_plot = st.checkbox(
-                "Show permutation null-distribution plot",
-                value=True,
-                help="Optional diagnostic: observed MMD^2 compared to shuffled-label null distribution.",
-            )
+    c1, c2, c3 = st.columns([2, 2, 2])
+    with c1:
+        trained_model_name = st.selectbox("Embedding network from model", model_names, key="mmd_trained_model")
+    with c2:
+        mode = st.selectbox(
+            "External misspecification mode",
+            ["Parameter shift", "Structure shift"],
+            key="mmd_mode"
+        )
+    with c3:
+        num_images = st.slider("Images per dataset", 100, 3000, 1000, step=100, key="mmd_num_images")
 
     model_dir = os.path.join(base_dir, trained_model_name)
 
@@ -408,6 +319,16 @@ def render_ui():
         st.error(f"Failed to load trained simulator/estimator for {trained_model_name}: {err}")
         return
 
+    batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50, key="mmd_batch_size")
+
+    t1, t2, t3 = st.columns(3)
+    with t1:
+        alpha = st.slider("Test significance alpha", 0.001, 0.2, 0.05, step=0.001, key="mmd_alpha")
+    with t2:
+        num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10, key="mmd_num_permutations")
+    with t3:
+        perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50, key="mmd_perm_subset")
+
     structure_simulator = None
     alt_name = trained_model_name
     sigma_scale = 1.0
@@ -416,98 +337,38 @@ def render_ui():
     b_factor_scale = 1.0
     snr_scale = 1.0
 
-    if "mmd_sigma_scale" not in st.session_state:
-        st.session_state.mmd_sigma_scale = 1.0
-    if "mmd_shift_scale" not in st.session_state:
-        st.session_state.mmd_shift_scale = 1.0
-    if "mmd_defocus_scale" not in st.session_state:
-        st.session_state.mmd_defocus_scale = 1.0
-    if "mmd_b_factor_scale" not in st.session_state:
-        st.session_state.mmd_b_factor_scale = 1.0
-    if "mmd_snr_scale" not in st.session_state:
-        st.session_state.mmd_snr_scale = 1.0
-
-    with cfg_right:
-        if mode == "Structure shift":
-            st.markdown("External Structure Source")
-            default_alt = model_names[0]
-            if len(model_names) > 1 and model_names[0] == trained_model_name:
-                default_alt = model_names[1]
-            alt_name = st.selectbox(
-                "External structure source model",
-                model_names,
-                index=model_names.index(default_alt),
-            )
-            alt_model_dir = os.path.join(base_dir, alt_name)
-            try:
-                structure_simulator = load_simulator_only(alt_model_dir)
-            except Exception as err:
-                st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
-                return
-        else:
-            st.markdown("Parameter Shift Preset")
-            preset = st.selectbox(
-                "Select a preset or choose Manual to customize:",
-                [
-                    "Manual",
-                    "Conservative (Mild shift)",
-                    "Moderate (Medium shift)",
-                    "Aggressive (Strong shift)",
-                    "Overblur (Only sigma)",
-                    "Low SNR (Only noise)",
-                ],
-                key="mmd_preset",
-                on_change=_apply_preset,
-                help="Each scale is multiplicative, e.g. defocus 0.8x means sampled defocus values are multiplied by 0.8.",
-            )
-
-            if "mmd_sync_slider_keys" not in st.session_state:
-                st.session_state.mmd_sync_slider_keys = False
-
-            if "mmd_slider_sigma" not in st.session_state:
-                st.session_state.mmd_slider_sigma = st.session_state.mmd_sigma_scale
-            if "mmd_slider_shift" not in st.session_state:
-                st.session_state.mmd_slider_shift = st.session_state.mmd_shift_scale
-            if "mmd_slider_defocus" not in st.session_state:
-                st.session_state.mmd_slider_defocus = st.session_state.mmd_defocus_scale
-            if "mmd_slider_b_factor" not in st.session_state:
-                st.session_state.mmd_slider_b_factor = st.session_state.mmd_b_factor_scale
-            if "mmd_slider_snr" not in st.session_state:
-                st.session_state.mmd_slider_snr = st.session_state.mmd_snr_scale
-
-            if st.session_state.mmd_sync_slider_keys:
-                st.session_state.mmd_slider_sigma = st.session_state.mmd_sigma_scale
-                st.session_state.mmd_slider_shift = st.session_state.mmd_shift_scale
-                st.session_state.mmd_slider_defocus = st.session_state.mmd_defocus_scale
-                st.session_state.mmd_slider_b_factor = st.session_state.mmd_b_factor_scale
-                st.session_state.mmd_slider_snr = st.session_state.mmd_snr_scale
-                st.session_state.mmd_sync_slider_keys = False
-
-            with st.expander("Shift parameter controls", expanded=True):
-                p1, p2 = st.columns(2)
-                with p1:
-                    st.slider("Sigma scale", 0.1, 5.0, step=0.1, key="mmd_slider_sigma")
-                    st.slider("Shift scale", 0.1, 5.0, step=0.1, key="mmd_slider_shift")
-                    st.slider("Defocus scale", 0.1, 5.0, step=0.1, key="mmd_slider_defocus")
-                with p2:
-                    st.slider("B-factor scale", 0.1, 5.0, step=0.1, key="mmd_slider_b_factor")
-                    st.slider("SNR scale", 0.1, 5.0, step=0.1, key="mmd_slider_snr")
-
-                if st.button("Reset manual values to 1.0", key="mmd_reset_manual", use_container_width=True):
-                    _reset_manual_scales()
-                    st.rerun()
-
-            sigma_scale = st.session_state.mmd_slider_sigma
-            shift_scale = st.session_state.mmd_slider_shift
-            defocus_scale = st.session_state.mmd_slider_defocus
-            b_factor_scale = st.session_state.mmd_slider_b_factor
-            snr_scale = st.session_state.mmd_slider_snr
-
-            st.session_state.mmd_sigma_scale = sigma_scale
-            st.session_state.mmd_shift_scale = shift_scale
-            st.session_state.mmd_defocus_scale = defocus_scale
-            st.session_state.mmd_b_factor_scale = b_factor_scale
-            st.session_state.mmd_snr_scale = snr_scale
+    if mode == "Structure shift":
+        default_alt = model_names[0]
+        if len(model_names) > 1 and model_names[0] == trained_model_name:
+            default_alt = model_names[1]
+        alt_name = st.selectbox(
+            "External structure source model",
+            model_names,
+            index=model_names.index(default_alt),
+            key="mmd_alt_name"
+        )
+        alt_model_dir = os.path.join(base_dir, alt_name)
+        try:
+            structure_simulator = load_simulator_only(alt_model_dir)
+        except Exception as err:
+            st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
+            return
+    else:
+        st.info(
+            "Parameter shift uses multiplicative scale factors, not absolute replacement values. "
+            "Example: defocus scale = 0.8 means each sampled defocus is multiplied by 0.8."
+        )
+        p1, p2, p3, p4, p5 = st.columns(5)
+        with p1:
+            sigma_scale = st.slider("Sigma scale (x sampled sigma)", 0.1, 5.0, 1.0, step=0.1, key="mmd_sigma_scale")
+        with p2:
+            shift_scale = st.slider("Shift scale (x sampled shift)", 0.1, 5.0, 1.0, step=0.1, key="mmd_shift_scale")
+        with p3:
+            defocus_scale = st.slider("Defocus scale (x sampled defocus)", 0.1, 5.0, 1.0, step=0.1, key="mmd_defocus_scale")
+        with p4:
+            b_factor_scale = st.slider("B-factor scale (x sampled B-factor)", 0.1, 5.0, 1.0, step=0.1, key="mmd_b_factor_scale")
+        with p5:
+            snr_scale = st.slider("SNR scale (x linear SNR)", 0.1, 5.0, 1.0, step=0.1, key="mmd_snr_scale")
 
     if mode == "Parameter shift":
         misspecified = any(
@@ -536,7 +397,7 @@ def render_ui():
         else:
             st.info(reason)
 
-    run_btn = st.button("Run MMD validation", type="primary", use_container_width=True)
+    run_btn = st.button("Generate datasets and compute MMD", type="primary", key="mmd_run_btn")
 
     if not run_btn:
         if "mmd_cached_result" in st.session_state:
@@ -632,4 +493,5 @@ def render_ui():
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="External Validation: MMD", layout="wide")
     render_ui()

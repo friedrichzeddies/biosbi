@@ -286,11 +286,11 @@ def render():
         return
         
     available_models = sorted([d for d in os.listdir(models_base_dir) if os.path.isdir(os.path.join(models_base_dir, d))])
-    selected_model_name = st.selectbox("Select Model to Validate", available_models)
+    selected_model_name = st.selectbox("Select Model to Validate", available_models, key="sbc_own_model_select")
     model_dir = os.path.join(models_base_dir, selected_model_name)
     
     # 2. Shared Config
-    M = st.slider("Number of Predicted Samples $M$ for SBC", 10, 100, 40, 5, help="How many samples to use for calculating the rank in each trial.")
+    M = st.slider("Number of Predicted Samples $M$ for SBC", 10, 100, 40, 5, help="How many samples to use for calculating the rank in each trial.", key="sbc_own_m_samples")
     
     # 3. Load Assets
     simulator, posterior = load_assets(model_dir)

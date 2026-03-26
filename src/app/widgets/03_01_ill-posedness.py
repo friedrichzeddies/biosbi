@@ -91,7 +91,7 @@ def render_ui():
     else:
         available_models = ["10cat_large_batch_resnet"]
         
-    selected_model_name = st.selectbox("Select Cached Estimator Model", available_models)
+    selected_model_name = st.selectbox("Select Cached Estimator Model", available_models, key="ill_posed_model_select")
     model_dir = os.path.join(models_base_dir, selected_model_name)
     
     try:
@@ -113,13 +113,13 @@ def render_ui():
     ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([1.5, 1, 1, 1])
     with ctrl1:
         st.write("") # Spacer
-        overlay_clean = st.checkbox("Overlay Clean Density", value=False)
+        overlay_clean = st.checkbox("Overlay Clean Density", value=False, key="ill_posed_overlay_clean")
     with ctrl2:
-        rot_x = st.slider("Rot X °", 0, 360, 0, key="x")
+        rot_x = st.slider("Rot X °", 0, 360, 0, key="ill_posed_x")
     with ctrl3:
-        rot_y = st.slider("Rot Y °", 0, 360, 45, key="y")
+        rot_y = st.slider("Rot Y °", 0, 360, 45, key="ill_posed_y")
     with ctrl4:
-        rot_z = st.slider("Rot Z °", 0, 360, 0, key="z")
+        rot_z = st.slider("Rot Z °", 0, 360, 0, key="ill_posed_z")
         
     # 2. Dynamic Images Row (Only First and Last)
     indices_to_show = [0, num_models - 1] if num_models > 1 else [0]
@@ -238,7 +238,3 @@ def render_ui():
         if num_models <= 10:
             ax2.legend(loc="upper right", prop={'size': 8})
         st.pyplot(fig2)
-
-if __name__ == "__main__":
-    st.set_page_config(page_title="Ill-Posedness Conformations", layout="wide")
-    render_ui()

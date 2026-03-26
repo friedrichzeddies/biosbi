@@ -12,63 +12,7 @@ from scipy.spatial import ConvexHull
 import cryo_sbi.utils.estimator_utils as est_utils
 from cryo_sbi.wpa_simulator.cryo_em_simulator import CryoEmSimulator, cryo_em_simulator
 
-st.set_page_config(page_title="External Validation: UMAP", layout="wide")
 
-
-def _apply_preset():
-    """Apply parameter shifts based on selected preset."""
-    preset = st.session_state.get("umap_preset", "Manual")
-    
-    if "Conservative" in preset:
-        # Subtle shifts — parameters lightly off from 1.0
-        st.session_state.umap_sigma_scale = 0.9
-        st.session_state.umap_shift_scale = 0.95
-        st.session_state.umap_defocus_scale = 1.0
-        st.session_state.umap_b_factor_scale = 0.95
-        st.session_state.umap_snr_scale = 1.1
-    elif "Moderate" in preset:
-        # Noticeable shifts
-        st.session_state.umap_sigma_scale = 0.75
-        st.session_state.umap_shift_scale = 0.8
-        st.session_state.umap_defocus_scale = 1.3
-        st.session_state.umap_b_factor_scale = 0.7
-        st.session_state.umap_snr_scale = 0.8
-    elif "Aggressive" in preset:
-        # Strong misspecification
-        st.session_state.umap_sigma_scale = 2.0
-        st.session_state.umap_shift_scale = 2.5
-        st.session_state.umap_defocus_scale = 0.5
-        st.session_state.umap_b_factor_scale = 3.0
-        st.session_state.umap_snr_scale = 0.3
-    elif "Overblur" in preset:
-        # High sigma only
-        st.session_state.umap_sigma_scale = 2.5
-        st.session_state.umap_shift_scale = 1.0
-        st.session_state.umap_defocus_scale = 1.0
-        st.session_state.umap_b_factor_scale = 1.0
-        st.session_state.umap_snr_scale = 1.0
-    elif "Low SNR" in preset:
-        # Noisy
-        st.session_state.umap_sigma_scale = 1.0
-        st.session_state.umap_shift_scale = 1.0
-        st.session_state.umap_defocus_scale = 1.0
-        st.session_state.umap_b_factor_scale = 1.0
-        st.session_state.umap_snr_scale = 0.3
-
-    # Defer widget-key synchronization to the next rerun before sliders are instantiated.
-    st.session_state.umap_sync_slider_keys = True
-
-
-def _reset_manual_scales():
-    """Reset manual parameter scales to neutral (1.0)."""
-    st.session_state.umap_sigma_scale = 1.0
-    st.session_state.umap_shift_scale = 1.0
-    st.session_state.umap_defocus_scale = 1.0
-    st.session_state.umap_b_factor_scale = 1.0
-    st.session_state.umap_snr_scale = 1.0
-
-    # Sync slider widget keys safely on the next rerun.
-    st.session_state.umap_sync_slider_keys = True
 
 
 def _available_model_dirs():
@@ -313,31 +257,17 @@ def render_ui():
         st.error("No model folders found in app/data/models.")
         return
 
-    cfg_left, cfg_right = st.columns(2, gap="medium")
-
-    with cfg_left:
-        c1, c2, c3 = st.columns([2, 2, 1.5])
-        with c1:
-            trained_model_name = st.selectbox("Embedding network from model", model_names)
-        with c2:
-            mode = st.selectbox(
-                "External misspecification mode",
-                ["Parameter shift", "Structure shift"],
-                help="Shift type quick guide: **Parameter shift** keeps the same structures but perturbs imaging/noise parameters "
-                "(sigma, shift, defocus, B-factor, SNR). **Structure shift** changes the underlying structure source model "
-                "(different conformations), while keeping the imaging pipeline consistent.",
-            )
-        with c3:
-            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
-
-        with st.expander("Advanced runtime and UMAP settings", expanded=False):
-            a1, a2, a3 = st.columns(3)
-            with a1:
-                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
-            with a2:
-                n_neighbors = st.slider("UMAP n_neighbors", 5, 100, 30)
-            with a3:
-                min_dist = st.slider("UMAP min_dist", 0.0, 0.99, 0.1, step=0.01)
+    c1, c2, c3 = st.columns([2, 2, 2])
+    with c1:
+        trained_model_name = st.selectbox("Embedding network from model", model_names, key="umap_trained_model")
+    with c2:
+        mode = st.selectbox(
+            "External misspecification mode",
+            ["Parameter shift", "Structure shift"],
+            key="umap_mode"
+        )
+    with c3:
+        num_images = st.slider("Images per dataset", 100, 3000, 1000, step=100, key="umap_num_images")
 
     model_dir = os.path.join(base_dir, trained_model_name)
 
@@ -346,6 +276,8 @@ def render_ui():
     except Exception as err:
         st.error(f"Failed to load trained simulator/estimator for {trained_model_name}: {err}")
         return
+
+    batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50, key="umap_batch_size")
 
     structure_simulator = None
     alt_name = trained_model_name
@@ -431,27 +363,39 @@ def render_ui():
             st.session_state.umap_b_factor_scale = b_factor_scale
             st.session_state.umap_snr_scale = snr_scale
 
-        if mode == "Structure shift":
-            st.markdown("External Structure Source")
-            default_alt = model_names[0]
-            if len(model_names) > 1 and model_names[0] == trained_model_name:
-                default_alt = model_names[1]
-            alt_name = st.selectbox(
-                "Select an external structure source model:",
-                model_names,
-                index=model_names.index(default_alt),
-            )
-            alt_model_dir = os.path.join(base_dir, alt_name)
-            try:
-                structure_simulator = load_simulator_only(alt_model_dir)
-            except Exception as err:
-                st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
-                return
-            
-            # Dummy values for consistency
-            sigma_scale = shift_scale = defocus_scale = b_factor_scale = snr_scale = 1.0
+    if mode == "Structure shift":
+        default_alt = model_names[0]
+        if len(model_names) > 1 and model_names[0] == trained_model_name:
+            default_alt = model_names[1]
+        alt_name = st.selectbox(
+            "External structure source model",
+            model_names,
+            index=model_names.index(default_alt),
+            key="umap_alt_name"
+        )
+        alt_model_dir = os.path.join(base_dir, alt_name)
+        try:
+            structure_simulator = load_simulator_only(alt_model_dir)
+        except Exception as err:
+            st.error(f"Failed to load external structure simulator from {alt_name}: {err}")
+            return
+    else:
+        st.info(
+            "Parameter shift uses multiplicative scale factors, not absolute replacement values. "
+            "Example: sigma scale = 1.5 means each sampled sigma is multiplied by 1.5."
+        )
+        p1, p2, p3, p4, p5 = st.columns(5)
+        with p1:
+            sigma_scale = st.slider("Sigma scale (x sampled sigma)", 0.1, 5.0, 1.0, step=0.1, key="umap_sigma_scale")
+        with p2:
+            shift_scale = st.slider("Shift scale (x sampled shift)", 0.1, 5.0, 1.0, step=0.1, key="umap_shift_scale")
+        with p3:
+            defocus_scale = st.slider("Defocus scale (x sampled defocus)", 0.1, 5.0, 1.0, step=0.1, key="umap_defocus_scale")
+        with p4:
+            b_factor_scale = st.slider("B-factor scale (x sampled B-factor)", 0.1, 5.0, 1.0, step=0.1, key="umap_b_factor_scale")
+        with p5:
+            snr_scale = st.slider("SNR scale (x linear SNR)", 0.1, 5.0, 1.0, step=0.1, key="umap_snr_scale")
 
-    # === Determine misspecification label ===
     if mode == "Parameter shift":
         misspecified = any(
             abs(v - 1.0) > 1e-9
@@ -478,7 +422,18 @@ def render_ui():
         else:
             st.info(reason)
 
-    run_btn = st.button("Run UMAP validation", type="primary", use_container_width=True)
+    st.caption(
+        "Important: In this widget, 'misspecified' is a scenario label set by your controls. "
+        "UMAP itself is not a formal hypothesis test and does not 'fail' statistically."
+    )
+
+    n1, n2 = st.columns(2)
+    with n1:
+        n_neighbors = st.slider("UMAP n_neighbors", 5, 100, 30, key="umap_n_neighbors")
+    with n2:
+        min_dist = st.slider("UMAP min_dist", 0.0, 0.99, 0.1, step=0.01, key="umap_min_dist")
+
+    run_btn = st.button("Generate datasets and run UMAP", type="primary", key="umap_run_btn")
 
     if not run_btn:
         if "umap_cached_result" in st.session_state:
@@ -574,4 +529,5 @@ def render_ui():
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title="External Validation: UMAP", layout="wide")
     render_ui()

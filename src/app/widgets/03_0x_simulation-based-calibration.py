@@ -4,24 +4,24 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 
 def _apply_preset():
-    preset = st.session_state.sbc_preset
-    if "sbc_1_true_theta" in st.session_state:
-        t = st.session_state.sbc_1_true_theta
+    preset = st.session_state.sbc_theory_preset
+    if "sbc_theory_true_theta" in st.session_state:
+        t = st.session_state.sbc_theory_true_theta
         if preset == "Exact Match":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 1.0
+            st.session_state.sbc_theory_mu = float(t)
+            st.session_state.sbc_theory_sigma = 1.0
         elif preset == "Model Too Certain":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 0.2
+            st.session_state.sbc_theory_mu = float(t)
+            st.session_state.sbc_theory_sigma = 0.2
         elif preset == "Model Too Uncertain":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 3.0
+            st.session_state.sbc_theory_mu = float(t)
+            st.session_state.sbc_theory_sigma = 3.0
         elif preset == "Model Overestimating":
-            st.session_state.sbc_1_mu = float(t) + 1.0
-            st.session_state.sbc_1_sigma = 1.0
+            st.session_state.sbc_theory_mu = float(t) + 1.0
+            st.session_state.sbc_theory_sigma = 1.0
         elif preset == "Model Underestimating":
-            st.session_state.sbc_1_mu = float(t) - 1.0
-            st.session_state.sbc_1_sigma = 1.0
+            st.session_state.sbc_theory_mu = float(t) - 1.0
+            st.session_state.sbc_theory_sigma = 1.0
 
 @st.fragment
 def _render_single_trial(post_mu, post_sigma, M):
@@ -29,14 +29,14 @@ def _render_single_trial(post_mu, post_sigma, M):
     st.subheader("1. Single Trial Anatomy")
 
     # Initialize true theta state
-    if "sbc_1_true_theta" not in st.session_state:
-        st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
+    if "sbc_theory_true_theta" not in st.session_state:
+        st.session_state.sbc_theory_true_theta = float(np.random.normal(0, 1.0))
 
-    if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", use_container_width=True):
-        st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
+    if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", use_container_width=True, key="sbc_theory_sim_btn"):
+        st.session_state.sbc_theory_true_theta = float(np.random.normal(0, 1.0))
         _apply_preset()
 
-    true_theta = st.session_state.sbc_1_true_theta
+    true_theta = st.session_state.sbc_theory_true_theta
     st.markdown(f"**Current True $\\theta^*$**: `{true_theta:+.3f}`")
 
     # Draw M samples from the predicted posterior N(mu, sigma^2)
@@ -148,15 +148,15 @@ def render():
 
     # Shared controls (outside fragments — changing these re-runs the whole page, updating both panels)
     presets = ["Manual", "Exact Match", "Model Too Certain", "Model Too Uncertain", "Model Overestimating", "Model Underestimating"]
-    st.selectbox("Quick Presets", presets, key="sbc_preset", on_change=_apply_preset)
+    st.selectbox("Quick Presets", presets, key="sbc_theory_preset", on_change=_apply_preset)
 
     col1, col2 = st.columns(2)
     with col1:
-        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -1.5, 1.5, -1.0, 0.1, key="sbc_1_mu")
+        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -1.5, 1.5, -1.0, 0.1, key="sbc_theory_mu")
     with col2:
-        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
+        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_theory_sigma")
 
-    M = st.slider("Number of Predicted Posterior Samples $M$", 10, 100, 20, 1, key="sbc_1_m")
+    M = st.slider("Number of Predicted Posterior Samples $M$", 10, 100, 20, 1, key="sbc_theory_m")
 
     # Side-by-side fragments — each re-runs independently
     vis_col1, vis_col2 = st.columns(2)
