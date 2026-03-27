@@ -54,44 +54,32 @@ def main() -> None:
     st.title("Chapter 2 Test Flow")
     st.caption("Sequential test app for Chapter 2 markdown and widgets.")
 
-    # Section 1: Waves, interference, Huygens, and far field.
+    # Section 1: Waves and diffraction + foundational wave widgets.
     render_markdown("02_01_waves-and-diffraction.md")
     st.divider()
     run_widget("02_01_huygens.py", "single_wave")
     st.divider()
     render_markdown("02_02_multiple_waves.md")
-    st.divider()
     run_widget("02_01_huygens.py", "huygens_fresnel_widget")
-    st.divider()
-    render_markdown("02_03_huygens.md")
-    st.divider()
     run_widget("02_01_huygens.py", "multiple_sources_wave")
-    st.divider()
-    render_markdown("02_04_fraunhofer-bridge.md")
     st.divider()
     run_widget("02_02_fraunhofer.py", "fraunhofer_diffraction_widget")
     st.divider()
 
-    # Section 2: Fourier progression from 1D to 2D to masking.
+    # Section 2: Fourier intuition + decomposition/filter widgets.
     render_markdown("02_03_fourier-intuition-1d-to-2d.md")
     st.divider()
     run_widget("02_03_1D-fourier-decomp.py", "render")
     st.divider()
-    render_markdown("02_08_fourier-in-2d-images.md")
-    st.divider()
     run_widget("02_04_2D-fourier-decomp.py", "render")
-    st.divider()
-    render_markdown("02_09_frequency-masking-to-ctf.md")
     st.divider()
     run_widget("02_05_masked-2d-fourier.py", "render")
     st.divider()
 
-    # Section 3: Optical model, 3D geometry, transfer limits, and SPA.
+    # Remaining chapter sections (currently text with TODO-widget placeholders).
     render_markdown("02_04_lenses-psf-ctf-image-formation.md")
     st.divider()
     render_markdown("02_05_ewald-and-projection-slice.md")
-    st.divider()
-    render_markdown("02_10_projection-slice-and-orientation-coverage.md")
     st.divider()
     render_markdown("02_06_ctf-in-real-cryoem-images.md")
     st.divider()

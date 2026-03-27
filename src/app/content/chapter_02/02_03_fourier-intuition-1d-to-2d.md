@@ -1,13 +1,19 @@
-# Fourier Intuition Part I: Start Where It Feels Safe
+# Fourier Intuition: From 1D Comfort Zone to 2D Image Thinking
 
-The far-field patterns you just explored are exactly where many courses suddenly say "and now Fourier transform" and move on too fast. So we will not do that. We will first build intuition in one dimension, where you can still see every moving piece.
+What we learned just before is that far-field diffraction is not chaos, and that this structure is deeply tied to Fourier behavior. The next challenge is emotional as much as mathematical: most people are willing to accept Fourier transforms in principle, but it only becomes useful once you can look at a signal or an image and mentally switch between real-space and frequency-space language without feeling like you changed subjects.
 
-A useful mindset is to stop thinking of the Fourier transform as a trick and start thinking of it as a change of coordinates. The signal does not change its identity; we just describe it in a basis where oscillatory structure becomes explicit.
+The cleanest way to get there is to begin in 1D, where frequency components are familiar sine and cosine building blocks, and then carry that exact logic into 2D, where the basis functions become plane waves with direction and spatial frequency. Nothing fundamentally new is introduced in that jump, but your visual intuition has to catch up, and that is precisely what this section is for.
 
-In 1D, that basis is built from sine-like components with different frequencies, amplitudes, and phases. Once you can actively manipulate those ingredients and predict what happens to the reconstruction, you have the core skill we need for everything that follows.
+It helps to treat the Fourier transform less like a mysterious operation and more like a coordinate change. You are not destroying information or creating new physics; you are describing the same object in a basis where some questions become easier to answer. In Cryo-EM that matters a lot, because low spatial frequencies mostly carry global morphology while higher spatial frequencies encode fine details, edges, and subtle structure that reconstruction quality depends on.
+
+Once you believe that, masking and modulation in Fourier space stop feeling abstract and start feeling operational. If a frequency band is attenuated, zeroed, or inverted, there is a direct and predictable consequence in real-space appearance, and this is exactly the habit of thought we need before we talk seriously about transfer functions.
 
 ## Try it yourself
 
-Use the next interaction to switch single components on and off, then disturb amplitudes and phases until your intuition catches up. The goal is not to remember formulas by heart, but to develop a feel for which ingredients shape coarse structure and which ones shape fine wiggles.
+In the interactive sequence below, start by turning individual 1D components on and off, then alter amplitudes and phases until the reconstruction behavior feels intuitive rather than surprising. After that, move into the 2D decomposition view and watch the same logic reappear with directional components. Finally, use the masking interaction and observe how removing specific frequency regions reshapes image content in real space.
 
-Right after this, we keep the exact same logic and lift it to 2D images, where the basis functions become directional plane waves.
+As you explore, keep asking yourself which structures survive aggressive high-frequency suppression and which structures collapse first, because that question will reappear in a more physical form once we discuss microscope transfer behavior.
+
+## Before we move on
+
+You now have the conceptual tool we will keep reusing: Fourier space is not a side note but the most practical language for imaging physics. Next we connect this representation to lenses, point-spread functions, and the CTF model so that the math and the microscope start speaking the same language.

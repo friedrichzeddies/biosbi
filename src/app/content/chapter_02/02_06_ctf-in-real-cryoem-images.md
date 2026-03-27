@@ -1,21 +1,23 @@
-# CTF in Real Cryo-EM Images: Why Raw Data Feels Harsh at First
+# CTF in Real Cryo-EM Images: Why Raw Data Looks So Unforgiving
 
-Even if geometry gives us the right slices, what we record is still filtered by microscope transfer behavior, and that is why raw images often look much harder to read than newcomers expect.
-
-The key relation remains
+From the previous section we carry one crucial relation forward,
 
 $$
 \mathcal{F}(\mathrm{Image}) = \mathcal{F}(\mathrm{Object})\,\mathrm{CTF},
 $$
 
-which means some spatial frequencies are damped, some are phase-inverted, and some can disappear near zero crossings. So yes, two images of the same structure can look surprisingly different if acquisition conditions differ.
+and this is exactly where many first encounters with real micrographs become emotionally rough, because once you internalize this equation you realize that the microscope does not simply record structure; it reshapes frequency content in a highly selective way before you ever see the image.
 
-Now combine this with low-dose constraints. We keep dose low to avoid damaging biological samples, so single images are noisy from the start. In practice, this means we are not trying to recover a pristine signal; we are trying to recover structure from noisy, transfer-modulated observations.
+That is why raw Cryo-EM images can look strangely low-contrast, inverted in places, or generally hard to parse at first glance. CTF zero crossings remove information at specific frequencies, oscillations can flip contrast, and envelope terms damp high-frequency detail, so two images of the same underlying object can look surprisingly different under different imaging settings.
+
+Now add dose limits. We cannot blast fragile biological samples with unlimited electrons, so we operate in low-dose regimes where single-image signal-to-noise ratio is poor. The difficult combination is that frequencies can be weakened by CTF behavior before noise is even considered, and then noise further obscures what remains. This is not a failure of interpretation skill; it is the native operating condition of the experiment.
 
 ## Try it yourself
 
-Use the frequency-masking interaction as a proxy for transfer effects and deliberately remove different frequency bands while tracking how the real-space image changes. This is still the fastest way to make CTF consequences feel tangible.
+In the interaction below, treat frequency masking as a first proxy for transfer effects and deliberately suppress different bands while comparing the real-space outcome. The important habit is to connect every Fourier-side change with an expected visual consequence, because that reflex will later make CTF discussions feel practical instead of ceremonial.
 
-TODO-widget (critical): physics-parameterized CTF explorer. Expected outcome: link defocus and envelope-like parameters to zero locations and visible image artifacts.
+TODO-widget (critical): physics-parameterized CTF explorer. Controls should include defocus, spherical aberration, envelope or B-like damping, and optional amplitude contrast. Expected outcome: map parameter changes to zero-crossing positions and corresponding image artifacts.
 
-The natural consequence of this section is SPA: if one image is noisy and filtered, we need many views and careful averaging to recover robust structure.
+## Before we move on
+
+You now have the right expectation: a single cryo image is noisy and transfer-modulated by design, not by accident. The next step is to show how many such imperfect views can still be combined into reliable 3D structure through SPA.
