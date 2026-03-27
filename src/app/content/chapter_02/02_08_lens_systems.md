@@ -1,0 +1,7 @@
+# Lens systems
+
+In our setting, a lens is not just a passive piece of hardware; it determines how much of the scattered signal we can actually keep. Because every real lens has a finite aperture, it only captures a limited band of spatial frequencies. You can think of this as a built-in frequency filter: low and mid frequencies pass more easily, while very high frequencies, which carry the finest structural details, are progressively lost. This is one of the key reasons why recovering tiny features is hard even before we talk about noise.
+
+At the same time, lenses are never ideal. Aberrations such as spherical aberration, astigmatism, and defocus-related phase distortions modify the wave on its way to the detector, so the image we record is a distorted version of the object information rather than a perfect copy. In practice, this means that reconstruction is not only about inverting a clean imaging model, but also about compensating for systematic optical errors as well as possible.
+
+The important upside is that lens action is highly structured: in Fourier optics, the lens maps incoming plane-wave components according to their wavevector $\mathbf{k}$, focusing components with the same direction to the same point in the back focal plane. So the lens effectively performs a Fourier transform-like mapping from scattering directions to positions in frequency space. This is exactly why cryo-EM processing is naturally formulated in Fourier terms: the physics of the microscope already organizes the measurement in that language.

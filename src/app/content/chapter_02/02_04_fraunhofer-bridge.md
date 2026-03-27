@@ -1,11 +1,9 @@
-# From Many Sources to Far-Field Structure
+For our purpose, these wavefronts are of great importance. They act as a description of coherent light, that we need to mathematically describe the underlying phenomena and to connect it to imaging and Cryo-EM.
 
-You just watched many tiny emitters collectively build a wavefront. The next question is what happens after that front propagates far enough away from the aperture.
+## Waves and Objects
 
-Close to the aperture, the pattern is still local and busy. Farther away, surprisingly clean structure emerges, and this is exactly the regime where diffraction and Fourier language begin to overlap in a very concrete way.
+Now, as you just watched many tiny emitters collectively build a wavefront, the next question is what happens after that front propagates and hits an _object_. We start with a simple case, an aperture of just a single slit. We call this obstacle an _aperture_.
 
-## Try it yourself
+In the next interaction, move the observation distance and compare the shape changes as you move from near-field behavior toward far-field behavior. What are you expecting?
 
-In the next interaction, move the observation distance and compare the shape changes as you move from near-field behavior toward far-field behavior. The key is not to memorize where a line appears, but to feel the transition from messy local behavior to global structured pattern.
-
-Right after this, we use that structure as the entry point into explicit Fourier decomposition.
+use that structure as the entry point into explicit Fourier decomposition.
