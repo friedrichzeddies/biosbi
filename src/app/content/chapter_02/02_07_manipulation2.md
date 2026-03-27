@@ -6,6 +6,4 @@ Once you know that, masking and modulation in Fourier space should stop feeling 
 
 If a frequency band is attenuated, zeroed, or inverted, there is a direct and predictable consequence in real-space appearance, and this is exactly the habit of thought we need before we talk about the next chapters.
 
-## Before we move on
-
 You now have the conceptual tool we will keep reusing: Fourier space is not a side note but the most practical language for imaging physics. Next we connect this representation to lenses, point-spread functions, and the CTF model so that the math and the microscope start speaking the same language.

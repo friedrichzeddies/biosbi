@@ -67,23 +67,37 @@ def main() -> None:
     st.divider()
 
     # Section 2: Fourier intuition + decomposition/filter widgets.
-    render_markdown("02_03_fourier-intuition-1d-to-2d.md")
+    render_markdown("02_05_fourier-intuition-1d-to-2d.md")
     st.divider()
     run_widget("02_03_1D-fourier-decomp.py", "render")
     st.divider()
     run_widget("02_04_2D-fourier-decomp.py", "render")
     st.divider()
+    render_markdown("02_06_fourier_manipulation.md")
+    st.divider()
     run_widget("02_05_masked-2d-fourier.py", "render")
     st.divider()
+    render_markdown("02_07_manipulation2.md")
+    st.divider()
 
-    # Remaining chapter sections (currently text with TODO-widget placeholders).
-    render_markdown("02_04_lenses-psf-ctf-image-formation.md")
+    # Section 3: Imaging geometry + transfer effects.
+    render_markdown("02_09_lens-systems.md")
     st.divider()
-    render_markdown("02_05_ewald-and-projection-slice.md")
+    render_markdown("02_10_ewald-and-projection-slice.md")
     st.divider()
-    render_markdown("02_06_ctf-in-real-cryoem-images.md")
+    run_widget("02_06_ewald-sphere.py", "render")
     st.divider()
-    render_markdown("02_07_spa-sample-prep-and-heterogeneity.md")
+    render_markdown("02_11_projection-slice-and-orientation-coverage.md")
+    st.divider()
+    run_widget("02_07_projection-slice-theorem.py", "render")
+    st.divider()
+    render_markdown("02_12_lenses-psf-ctf-image-formation.md")
+    st.divider()
+    run_widget("02_08_ctf-cat.py", "render")
+    st.divider()
+    render_markdown("02_13_ctf-in-real-cryoem-images.md")
+    st.divider()
+    render_markdown("02_14_spa-sample-prep-and-heterogeneity.md")
 
 
 if __name__ == "__main__":
