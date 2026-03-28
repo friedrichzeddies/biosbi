@@ -70,7 +70,7 @@ def render():
         y_current = y_true
 
     # Master Reconstruction Plot (Merged explicitly at the top)
-    fig_main, ax_main = plt.subplots(figsize=(10, 4))
+    fig_main, ax_main = plt.subplots(figsize=(8, 2.8))
     
     if st.session_state.decomp_active:
         # Draw dotted line of truth
@@ -89,7 +89,7 @@ def render():
     ax_main.set_ylim(-max_y, max_y)
     
     ax_main.axis('off')
-    st.pyplot(fig_main, clear_figure=True)
+    st.pyplot(fig_main, clear_figure=True, use_container_width=False)
     
     # Button to trigger decomposition
     if not st.session_state.decomp_active:
@@ -114,12 +114,12 @@ def render():
                 
                 # To visualize component isolation without the global phase offset
                 y_mini = A_curr * np.sin(freqs[i] * x + phi_curr)
-                fig_mini, ax_mini = plt.subplots(figsize=(2, 1.5))
+                fig_mini, ax_mini = plt.subplots(figsize=(1.6, 1.2))
                 ax_mini.plot(x, y_mini, color=f"C{i}", lw=2)
                 ax_mini.set_ylim([-5.5, 5.5])
                 ax_mini.margins(x=0)
                 ax_mini.axis('off')
-                st.pyplot(fig_mini, clear_figure=True)
+                st.pyplot(fig_mini, clear_figure=True, use_container_width=False)
                 
                 # Interactive sliders bound to session state with explicit initial values
                 st.slider("Amplitude", 0.0, 10.0, value=float(true_amps[i]), key=f"amp_{i}")

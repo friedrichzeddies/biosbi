@@ -93,7 +93,7 @@ def render():
 
     # Master Reconstruction Plot
     if st.session_state.decomp_active_2d:
-        fig_main, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        fig_main, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 3.2))
         
         # True Original
         im1 = ax1.imshow(Z_true, cmap='viridis', vmin=-max_z, vmax=max_z, origin='lower', extent=[0, 1, 0, 1])
@@ -105,14 +105,14 @@ def render():
         ax2.set_title("Reconstructed Sum")
         ax2.axis('off')
         
-        st.pyplot(fig_main, clear_figure=True)
+        st.pyplot(fig_main, clear_figure=True, use_container_width=False)
     else:
         # Before hitting decomposition, just show a massive single original true signal
-        fig_main, ax_main = plt.subplots(figsize=(6, 4))
+        fig_main, ax_main = plt.subplots(figsize=(4.8, 3.2))
         ax_main.imshow(Z_true, cmap='viridis', vmin=-max_z, vmax=max_z, origin='lower', extent=[0, 1, 0, 1])
         ax_main.set_title("True Original Image")
         ax_main.axis('off')
-        st.pyplot(fig_main, clear_figure=True)
+        st.pyplot(fig_main, clear_figure=True, use_container_width=False)
     
     # Button to trigger decomposition
     if not st.session_state.decomp_active_2d:
@@ -138,10 +138,10 @@ def render():
                 
                 # To visualize isolated component without global spatial shifts
                 Z_mini = A_curr * np.sin(2 * np.pi * (u * X + v * Y) + phi_curr)
-                fig_mini, ax_mini = plt.subplots(figsize=(2, 2))
+                fig_mini, ax_mini = plt.subplots(figsize=(1.4, 1.4))
                 ax_mini.imshow(Z_mini, cmap='viridis', vmin=-11, vmax=11, origin='lower', extent=[0, 1, 0, 1])
                 ax_mini.axis('off')
-                st.pyplot(fig_mini, clear_figure=True)
+                st.pyplot(fig_mini, clear_figure=True, use_container_width=False)
                 
                 # Interactive sliders bound to session state with explicit initial values
                 st.slider("Amplitude", 0.0, 10.0, value=float(true_amps[i]), key=f"amp_2d_{i}")

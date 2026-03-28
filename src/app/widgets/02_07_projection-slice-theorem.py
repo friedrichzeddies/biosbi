@@ -319,8 +319,9 @@ def _plot_reconstruction_stage(
     # Plot 3: Absolute error vs original
     fig3 = plt.figure(figsize=(5.8, 5.0))
     ax3 = fig3.add_subplot(1, 1, 1)
-    im_err = ax3.imshow(error_map, cmap="hot", origin="lower", extent=[-1, 1, -1, 1])
-    ax3.set_title("Comparison to original: |error|")
+    # Absolute error uses a fixed [0, 1] scale to make comparisons across runs meaningful.
+    im_err = ax3.imshow(error_map, cmap="hot", origin="lower", extent=[-1, 1, -1, 1], vmin=0.0, vmax=1.0)
+    ax3.set_title("Comparison to original: absolute error |recon - original|")
     ax3.set_xlabel("x")
     ax3.set_ylabel("y")
     ax3.grid(alpha=0.1, color="white")
@@ -339,7 +340,7 @@ def render() -> None:
     """
     st.subheader("Projection Slice Theorem")
     st.caption("From line integrals to reconstruction: each projection contributes one central Fourier slice.")
-    st.latex(r"\mathcal{F}_t\{p_\theta(t)\}(\omega) = \mathcal{F}_{2D}\{f(x,y)\}(\omega\cos\theta,\, \omega\sin\theta)")
+
     data = _build_phantom()
 
     # ==================== STAGE 1: FORWARD PROBLEM ====================
@@ -376,7 +377,6 @@ def render() -> None:
         sparse_fft, hit_count = _build_sparse_fft_from_angles(data["image"], data["x"], data["freq"], num_angles)
         reconstructed = _reconstruct_from_sparse_slices(sparse_fft, hit_count)
         mse = float(np.mean((data["image"] - reconstructed) ** 2))
-        psnr = 10 * np.log10(1.0 / (mse + 1e-12)) if mse > 0 else 100.0
 
     sampled_pixels = int(np.count_nonzero(hit_count > 0))
     total_pixels = int(hit_count.size)
@@ -399,13 +399,13 @@ def render() -> None:
     # ==================== INTERPRETATION ====================
     st.markdown("---")
     if mse < 0.01:
-        st.success(f"✓ Strong reconstruction: MSE = {mse:.5f}, PSNR = {psnr:.1f} dB")
+        st.success(f"✓ Strong reconstruction: MSE = {mse:.5f}")
         st.write("Error is concentrated in fine details. Low frequencies are well-captured by many angle overlaps.")
-    elif mse < 0.05:
-        st.info(f"△ Moderate reconstruction: MSE = {mse:.5f}, PSNR = {psnr:.1f} dB")
+    elif mse < 0.02:
+        st.info(f"△ Moderate reconstruction: MSE = {mse:.5f}")
         st.write("Error shows structure. Higher angles needed for finer detail.")
     else:
-        st.warning(f"⚠ Limited reconstruction: MSE = {mse:.5f}, PSNR = {psnr:.1f} dB")
+        st.warning(f"⚠ Limited reconstruction: MSE = {mse:.5f}")
         st.write("Error is significant. High-frequency information is sparse or missing.")
 
     _, angles_unique = _effective_unique_angles(num_angles, len(data["freq"]))

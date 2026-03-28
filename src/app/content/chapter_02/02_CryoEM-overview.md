@@ -1,6 +1,6 @@
-# What do you need in order to _understand_ Cryo-EM?
+## What do you need in order to _understand_ Cryo-EM?
 
-## Chapter 2 lesson sequence (implemented)
+### Chapter 2 lesson sequence (implemented)
 
 This file remains the original brainstorm and planning draft.
 
@@ -89,7 +89,7 @@ In that picture, each atom contributes a little scattered spherical wave. Summin
 
 The important point: for a given incident plane wave, not all \( \mathbf{q} \)-vectors are allowed by the geometry and energy conservation of elastic scattering.
 
-## Introduce wavevectors and the sphere
+### Introduce wavevectors and the sphere
 
 Enter the Ewald sphere. We describe the incident beam by a wavevector \( \mathbf{k}\_0 \) and any scattered beam by \( \mathbf{k} \). The scattering vector is
 

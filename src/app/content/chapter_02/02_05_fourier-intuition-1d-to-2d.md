@@ -40,7 +40,7 @@ For all alert readers this screams the first fundamental result of our course: *
 
 With this first pillar in place, lets take a well-deserved look into the Fourier transformation apart from the formulas.
 
-# Fourier Intuition
+## Fourier Intuition
 
 Long story short: far-field diffraction is not chaos, the structure is deeply tied to Fourier behavior. The next challenge is to move from accepting Fourier transforms as a principle to mentally switching between real-space and frequency-space language without feeling like you changed subjects, once you look at a signal or an image.
 

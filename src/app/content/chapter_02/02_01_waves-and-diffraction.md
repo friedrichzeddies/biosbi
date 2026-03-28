@@ -1,4 +1,4 @@
-# Waves and Diffraction: Where the Story Actually Begins
+## Waves and Diffraction: Where the Story Actually Begins
 
 As we assume that a good portion never heard about Cryo-EM before in detail, we aim for a motivation from the ground up, and this means – as often in physics – we should start with waves. Almost everything that follows rests on one plain idea: waves meet, waves interfere, and that interference is what later becomes image contrast.
 
