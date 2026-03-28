@@ -4,16 +4,18 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "cryosbi"
-authors = [
-   { name = "David Silva-Sanchez", email = "david.silva@yale.edu"},
-   { name = "Lars Dingeldein"},
-   { name = "Pilar Cossio"},
-   { name = "Roberto Covino"}
-]
-
-
+name = "biosbi"
 version = "0.2"
+requires-python = ">=3.12"
+description = "Interactive cryo-EM and simulation-based inference teaching app, adapted from cryoSBI."
+authors = [
+    { name = "Sebastian Metzler" },
+    { name = "Friedrich Zeddies" }
+]
+maintainers = [
+    { name = "Sebastian Metzler" },
+    { name = "Friedrich Zeddies" }
+]
 dependencies = [
     "lampe",
     "zuko",
@@ -31,7 +33,17 @@ dependencies = [
     "umap-learn>=0.5.7",
 ]
 
+[project.urls]
+Repository = "https://github.com/flatironinstitute/cryoSBI"
+Source = "https://github.com/flatironinstitute/cryoSBI"
 
 [project.scripts]
 train_npe_model = "cryo_sbi.inference.command_line_tools:cl_npe_train_no_saving"
 model_to_tensor = "cryo_sbi.utils.command_line_tools:cl_models_to_tensor"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cryo_sbi*"]

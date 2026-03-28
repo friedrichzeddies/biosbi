@@ -220,11 +220,15 @@ def fraunhofer_diffraction_widget() -> None:
 			
 			if show_theory:
 				theory = _theoretical_sinc_amplitude(y_vals, float(config["observation_distance"]))
-				ax.plot(y_vals, theory, "--", color="#d62728", linewidth=2.0, label="Fraunhofer sinc")
+				theory_peak = float(np.max(theory))
+				measured_peak = float(np.max(measured))
+				if theory_peak > 0.0:
+					theory = theory * (measured_peak / theory_peak)
+				ax.plot(y_vals, theory, "--", color="#d62728", linewidth=2.0, label="Fraunhofer sinc (scaled)")
 
 			ax.set_xlabel("y")
 			ax.set_ylabel("Amplitude magnitude")
-			ax.set_ylim(0.0, AMPLITUDE_AXIS_MAX)
+			#ax.set_ylim(0.0, AMPLITUDE_AXIS_MAX)
 			#ax.grid(True, alpha=0.3)
 			ax.legend()
 			ax.set_title(f"Regime: {regime} ($x = {config['observation_distance']:.1f}$, Fresnel $N = {fresnel_num:.2f})$")
