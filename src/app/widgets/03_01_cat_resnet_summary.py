@@ -19,7 +19,6 @@ SLIDER_KEYS = {
     "rx": "slider_1_rx",
     "ry": "slider_2_ry",
     "rz": "slider_3_rz",
-    "sigma": "slider_4_sigma",
     "shift_x": "slider_5_shift_x",
     "shift_y": "slider_6_shift_y",
 }
@@ -167,8 +166,6 @@ def _get_available_estimator_models() -> list[str]:
 
 @st.fragment
 def cat_resnet_summary_widget(instance_id: str = "main"):
-    st.subheader("Cat Projection -> ResNet Summary")
-    st.caption("Projection from cat model with cryo_sbi.project_density, then summary embedding via trained ResNet estimator.")
 
     available_models = _get_available_estimator_models()
     default_model = "2cat_resnet" if "2cat_resnet" in available_models else available_models[0]
@@ -203,37 +200,10 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
         ry = st.slider("Rotation Y", -180, 180, 0, key=_slider_key("ry", instance_id))
         rz = st.slider("Rotation Z", -180, 180, 0, key=_slider_key("rz", instance_id))
 
-        sigma_lo, sigma_hi = assets["sigma_bounds"]
-        if sigma_hi > sigma_lo:
-            sigma_val = st.slider(
-                "Sigma",
-                min_value=float(sigma_lo),
-                max_value=float(sigma_hi),
-                value=float(assets["sigma_default"]),
-                step=0.01,
-                key=_slider_key("sigma", instance_id),
-            )
-        else:
-            sigma_val = float(assets["sigma_default"])
-            st.write(f"Sigma: {sigma_val:.3f}")
+        sigma_val = float(assets["sigma_default"])
 
-        shift_default = float(assets["shift_default"])
-        shift_x = st.slider(
-            "Shift X",
-            -5.0,
-            5.0,
-            value=shift_default,
-            step=0.1,
-            key=_slider_key("shift_x", instance_id),
-        )
-        shift_y = st.slider(
-            "Shift Y",
-            -5.0,
-            5.0,
-            value=shift_default,
-            step=0.1,
-            key=_slider_key("shift_y", instance_id),
-        )
+        shift_x = float(assets["shift_default"])
+        shift_y = float(assets["shift_default"])
 
     coords = cat_models[model_idx : model_idx + 1]
     quat = _quat_wxyz_from_euler(rx, ry, rz)
@@ -302,6 +272,15 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
                     "Note: This 128-d embedding is shown as an 8x16 grid for readability only. "
                     "Cell neighborhood does not imply spatial structure or feature proximity."
                 )
+
+    st.divider()
+    with st.expander("📝 Interesting Observations"):
+        st.markdown("""
+            **Interesting observations:**
+            - **Recommend the 10 cat model**: Try switching to this model to the 10 cat models as you can gradually follow the changes in embedding.
+            - **View from the side**: Rotate the cat to a side view and watch the summary change significantly as unique features are revealed.
+            - **Ambiguity**: Use a view where conformations look very similar (e.g., rotations near `-30, 0, -90`); notice the summary barely changes. It's interesting that the embedding is almost invariant to different in conformations as seen from this projection. This certainly will make learning the neural posterior very hard, at least for those orientations.
+        """)
 
 
 def render():

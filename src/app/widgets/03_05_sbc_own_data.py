@@ -45,7 +45,7 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
     st.markdown("### 1. Single Trial Sandbox")
     st.write("Draw a single ground-truth conformation from the prior, simulate its 2D projection, and ask the model to guess the posterior.")
     
-    if st.button("🚀 Simulate New Trial", key="sbc_own_sim_btn"):
+    if st.button("Simulate New Trial", key="sbc_own_sim_btn"):
         # 1. Sample True Theta* and Nuisance params from PRIOR
         parameters = simulator._priors.sample((1,))
         true_idx = parameters[0][0, 0].item()
@@ -151,7 +151,7 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
                 
                 st.info(f"**Calculated Rank:** The true $\\theta^*$ ({true_idx:.2f}) is larger than **{rank}** out of the {M} samples.")
                 st.markdown("""
-                    > **💡 Why two types of samples?**  
+                    > **Why two types of samples?**  
                     > To get that smooth purple KDE curve, we have to sample the posterior **many hundreds of times** (e.g., 1000+). This is great for visualizing a single result, but it's too slow for a mass validation of 2000 trials. 
                     > 
                     > For **SBC**, we only need a few samples (the **blue marks** on the axis) to calculate a valid rank statistic. In the mass validation below, we use this faster approach to check the model's overall honesty.
@@ -176,7 +176,7 @@ def _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor
     with col_n:
         N = st.number_input("Number of Trials $N$", 50, 2000, 200, 50, key="sbc_own_n")
     
-    if st.button("📊 Run Mass SBC Comparison", key="sbc_own_mass_run"):
+    if st.button("Run Mass SBC Comparison", key="sbc_own_mass_run"):
         if posterior is None:
             st.error("Cannot run SBC without a trained estimator!")
             return
@@ -274,11 +274,11 @@ def _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor
         expected_std = np.sqrt(((M + 1)**2 - 1) / 12)
         
         if observed_std > expected_std * 1.1:
-            st.error("🚨 **Pathology: Overconfident Model (U-Shape)**")
+            st.error("**Pathology: Overconfident Model (U-Shape)**")
             st.write("The model's posterior is too narrow. The true parameter frequently lands outside the predicted range, causing ranks to pile up at the extreme 0 and $M$ edges.")
             has_pathology = True
         elif observed_std < expected_std * 0.9:
-            st.info("ℹ️ **Pathology: Underconfident Model (Bathtub ∩)**")
+            st.info("**Pathology: Underconfident Model (Bathtub ∩)**")
             st.write("The model's posterior is too wide. The true parameter almost always lands safely in the middle, leaving the edges of the rank histogram empty.")
             has_pathology = True
             
@@ -289,27 +289,22 @@ def _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor
         sem = expected_std / np.sqrt(N)
         
         if avg_rank > exp_rank + (3.0 * sem):
-            st.warning("⚠️ **Pathology: Underestimation Bias**")
+            st.warning("**Pathology: Underestimation Bias**")
             st.write("On average, the model predicts indices that are **smaller** than the truth (pushing the true $\\theta^*$ to a higher rank).")
             has_pathology = True
         elif avg_rank < exp_rank - (3.0 * sem):
-            st.warning("⚠️ **Pathology: Overestimation Bias**")
+            st.warning("**Pathology: Overestimation Bias**")
             st.write("On average, the model predicts indices that are **larger** than the truth (pushing the true $\\theta^*$ to a lower rank).")
             has_pathology = True
             
         if not has_pathology:
-            st.success("✅ **Calibration Success!** The model appears statistically honest. The ranks are approximately uniform, meaning the model's uncertainty matches the actual error rate.")
+            st.success("**Calibration Success!** The model appears statistically honest. The ranks are approximately uniform, meaning the model's uncertainty matches the actual error rate.")
 
 # ==========================================
 # Main App
 # ==========================================
 
 def render():
-    st.markdown("## 🔍 Internal Validation: SBC on Your Data")
-    st.write("""
-        Now we apply the Simulation-Based Calibration (SBC) framework to your real cat conformations. 
-        Select a model below to check if its posterior estimates are well-calibrated.
-    """)
     
     # 1. Model Selection
     models_base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
@@ -340,7 +335,7 @@ def render():
             st.session_state.sbc_defocus_scale = 1.0
             st.session_state.sbc_b_factor_scale = 1.0
 
-    with st.expander("🛠️ Advanced Misspecification Options"):
+    with st.expander("Advanced Misspecification Options"):
         st.markdown("**Benchmark Presets**")
     
         st.selectbox("Inference Stress-Test Presets", 
@@ -379,13 +374,13 @@ def render():
     _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor_scale)
 
     st.divider()
-    with st.expander("📝 General Observations"):
+    with st.expander("General Observations"):
         st.markdown("""
             **Robustness to Noise:**  
-            Quite misspecification robust against noise (e.g., 0.1x SNR does not lead to strong miscalibration). Presumably, this is because the model "learned" to be naturally less confident for very noisy images, staying statistically "honest" even as the signal degrades.
+            We feel like the model is quite misspecification robust against noise (e.g., 0.1x SNR does not lead to strong miscalibration). Presumably, this is because the model "learned" to be naturally less confident for very noisy images, staying statistically "honest" even as the signal degrades.
             
             **CTF Sensitivity:**  
-            Under heavy induced misspecification—especially in regards to **Defocus** or **B-factor** changes—the model does appear to miscalibrate. This suggests information loss from blurring is harder for the model to quantify than raw additive noise.
+            Under heavy induced misspecification, especially in regards to **Defocus** or **B-factor** changes, the model does appear to miscalibrate. This might be connected to our exploration of overconfidently wrong behaviour in an earlier widget. 
         """)
 
 if __name__ == "__main__":

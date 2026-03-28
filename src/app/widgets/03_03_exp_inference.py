@@ -127,14 +127,40 @@ def build_payload(simulator, state_prefix, defaults):
         },
     }
     
-    selected_preset = st.selectbox("Presets", list(presets.keys()), key=f"{state_prefix}_preset")
-    if selected_preset != "Custom":
-        p_vals = presets[selected_preset]
-        for k, v in p_vals.items():
-            st.session_state[f"{state_prefix}_{k}"] = v
+    if f"{state_prefix}_preset" not in st.session_state:
+        st.session_state[f"{state_prefix}_preset"] = "Default"
+        for k, v in presets["Default"].items():
+            if f"{state_prefix}_{k}" not in st.session_state:
+                st.session_state[f"{state_prefix}_{k}"] = v
+
+    def _apply_preset():
+        pname = st.session_state[f"{state_prefix}_preset"]
+        if pname != "Custom":
+            p_vals = presets[pname]
+            for k, v in p_vals.items():
+                st.session_state[f"{state_prefix}_{k}"] = v
+
+    def _make_custom():
+        st.session_state[f"{state_prefix}_preset"] = "Custom"
+
+    selected_preset = st.selectbox(
+        "Presets", 
+        list(presets.keys()), 
+        key=f"{state_prefix}_preset",
+        on_change=_apply_preset
+    )
+    
+    if selected_preset == "Default":
+        st.success("Using the same imaging settings as training; no discrepancy expected.")
+    elif selected_preset == "Clean":
+        st.warning("Removing CTF effects and taking a low amount of noise. This is out-of-distribution for the model!")
+    elif selected_preset == "High Noise":
+        st.warning("Testing robustness: extremely low SNR. The model will likely be uncertain.")
+    elif selected_preset == "High Defocus":
+        st.warning("Testing robustness: extremely high defocus. The CTF oscillates rapidly.")
 
     # --- Payload UI ---
-    c1, c2, c3, c4 = st.columns(4)
+    c1, cx, cy, cz = st.columns(4)
     with c1:
         true_index = st.slider(
             "True conformation",
@@ -144,69 +170,78 @@ def build_payload(simulator, state_prefix, defaults):
             key=f"{state_prefix}_true_index",
         )
 
-    with c2:
+    with cx:
         rot_x = st.slider("Rot X (deg)", 0, 360, 0, key=f"{state_prefix}_rot_x", help="Rotation around the X-axis in degrees.")
+    with cy:
         rot_y = st.slider("Rot Y (deg)", 0, 360, 45, key=f"{state_prefix}_rot_y", help="Rotation around the Y-axis in degrees.")
+    with cz:
         rot_z = st.slider("Rot Z (deg)", 0, 360, 0, key=f"{state_prefix}_rot_z", help="Rotation around the Z-axis in degrees.")
 
-    with c3:
-        defocus = st.number_input(
-            "Defocus (μm)",
-            value=float(defaults["defocus"]),
-            step=0.05,
-            key=f"{state_prefix}_defocus",
-            help="The defocus of the microscope is given in units of micrometres (μm).",
-        )
-        b_factor = st.number_input(
-            "B-factor (Å²)",
-            value=float(defaults["b_factor"]),
-            step=0.05,
-            key=f"{state_prefix}_b_factor",
-            help="The B-factor is given in units of Angström squared (Å²) and defines the decay rate of the CTF envelope function.",
-        )
+    with st.expander("Direct access to CTF settings", expanded=(selected_preset == "Custom")):
+        ec1, ec2 = st.columns(2)
+        with ec1:
+            defocus = st.number_input(
+                "Defocus (μm)",
+                value=float(defaults["defocus"]),
+                step=0.05,
+                key=f"{state_prefix}_defocus",
+                on_change=_make_custom,
+                help="The defocus of the microscope is given in units of micrometres (μm).",
+            )
+            b_factor = st.number_input(
+                "B-factor (Å²)",
+                value=float(defaults["b_factor"]),
+                step=0.05,
+                key=f"{state_prefix}_b_factor",
+                on_change=_make_custom,
+                help="The B-factor is given in units of Angström squared (Å²) and defines the decay rate of the CTF envelope function.",
+            )
 
-    with c4:
-        snr_linear = st.number_input(
-            "SNR (linear)",
-            min_value=1e-6,
-            value=max(1e-6, float(defaults["snr"])),
-            step=0.01,
-            key=f"{state_prefix}_snr",
-            help="The SNR (Signal-to-noise ratio) linear is the ratio of signal power to noise power. It defines the amount of noise in simulated images. For example, at SNR=1.0, signal and noise have equal power.",
-        )
-        sigma = st.number_input(
-            "Sigma",
-            value=float(defaults["sigma"]),
-            step=0.05,
-            key=f"{state_prefix}_sigma",
-            help="The atom sigma defines the size of the Gaussians used to approximate the protein's electron density. Here, each Gaussian represents one amino acid, and while all Gaussians have the same sigma, the value is made to vary in the simulations.",
-        )
-        amp = st.number_input(
-            "Amplitude contrast (AMP)",
-            value=float(defaults["amp"]),
-            step=0.01,
-            key=f"{state_prefix}_amp",
-            help="The Amplitude is a unitless parameter which ranges between 0 and 1.",
-        )
-        
-        # CTF Popover
-        with st.popover("Show CTF Preview"):
-            pixel_size = float(simulator._pixel_size.item())
-            k_1d = np.linspace(0, 1 / (2 * max(1e-6, pixel_size)), 100)
-            k2 = k_1d**2
-            env = np.exp(-b_factor * k2 * 0.5)
-            phase = defocus * np.pi * 2.0 * 10000 * 0.019866
-            ctf_val = (-amp * np.cos(phase * k2 * 0.5) - np.sqrt(max(0, 1 - amp**2)) * np.sin(phase * k2 * 0.5)) * env / max(1e-6, amp)
+        with ec2:
+            snr_linear = st.number_input(
+                "SNR (linear)",
+                min_value=1e-6,
+                value=max(1e-6, float(defaults["snr"])),
+                step=0.01,
+                key=f"{state_prefix}_snr",
+                on_change=_make_custom,
+                help="The SNR (Signal-to-noise ratio) linear is the ratio of signal power to noise power. It defines the amount of noise in simulated images. For example, at SNR=1.0, signal and noise have equal power.",
+            )
+            sigma = st.number_input(
+                "Sigma",
+                value=float(defaults["sigma"]),
+                step=0.05,
+                key=f"{state_prefix}_sigma",
+                on_change=_make_custom,
+                help="The atom sigma defines the size of the Gaussians used to approximate the protein's electron density. Here, each Gaussian represents one amino acid, and while all Gaussians have the same sigma, the value is made to vary in the simulations.",
+            )
+            amp = st.number_input(
+                "Amplitude contrast (AMP)",
+                value=float(defaults["amp"]),
+                step=0.01,
+                key=f"{state_prefix}_amp",
+                on_change=_make_custom,
+                help="The Amplitude is a unitless parameter which ranges between 0 and 1.",
+            )
             
-            fig_ctf, ax_ctf = plt.subplots(figsize=(4, 2))
-            ax_ctf.plot(k_1d, ctf_val, color="#1f77b4", lw=1.5)
-            ax_ctf.axhline(0, color="gray", lw=0.5, ls="--")
-            ax_ctf.set_title("CTF Preview", fontsize=10)
-            ax_ctf.tick_params(axis='both', which='major', labelsize=8)
-            ax_ctf.set_xlabel("k (1/Å)", fontsize=8)
-            plt.tight_layout()
-            st.pyplot(fig_ctf)
-            plt.close(fig_ctf)
+            # CTF Popover
+            with st.popover("Show CTF Preview"):
+                pixel_size = float(simulator._pixel_size.item())
+                k_1d = np.linspace(0, 1 / (2 * max(1e-6, pixel_size)), 100)
+                k2 = k_1d**2
+                env = np.exp(-b_factor * k2 * 0.5)
+                phase = defocus * np.pi * 2.0 * 10000 * 0.019866
+                ctf_val = (-amp * np.cos(phase * k2 * 0.5) - np.sqrt(max(0, 1 - amp**2)) * np.sin(phase * k2 * 0.5)) * env / max(1e-6, amp)
+                
+                fig_ctf, ax_ctf = plt.subplots(figsize=(4, 2))
+                ax_ctf.plot(k_1d, ctf_val, color="#1f77b4", lw=1.5)
+                ax_ctf.axhline(0, color="gray", lw=0.5, ls="--")
+                ax_ctf.set_title("CTF Preview", fontsize=10)
+                ax_ctf.tick_params(axis='both', which='major', labelsize=8)
+                ax_ctf.set_xlabel("k (1/Å)", fontsize=8)
+                plt.tight_layout()
+                st.pyplot(fig_ctf)
+                plt.close(fig_ctf)
 
     payload = {
         "index": int(true_index),
@@ -320,11 +355,6 @@ def _payload_signature(payload):
 
 @st.fragment
 def render_ui():
-    st.title("03 Experiment Inference")
-    st.markdown(
-        "Use one trained posterior as the fixed model and stress-test it with custom simulation payloads "
-        "that can differ from the training simulation setup."
-    )
 
     models_base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
     if os.path.exists(models_base_dir):
@@ -338,7 +368,7 @@ def render_ui():
     else:
         available_models = ["10cat_large_batch_resnet"]
 
-    selected_model_name = st.selectbox("Posterior trained on", available_models)
+    selected_model_name = st.selectbox("Cached models:", available_models)
     model_dir = os.path.join(models_base_dir, selected_model_name)
 
     try:
@@ -377,6 +407,7 @@ def render_ui():
     # Apply randomization (only if NOT instantiated)
     if st.session_state.get(random_flag_key, False):
         randomize_payload_controls(simulator, state_prefix)
+        st.session_state[f"{state_prefix}_preset"] = "Custom"
         st.session_state[random_flag_key] = False
         st.rerun()
 
@@ -387,7 +418,7 @@ def render_ui():
         st.session_state[f"{state_prefix}_defocus"] = defaults["defocus"]
         st.session_state[f"{state_prefix}_b_factor"] = defaults["b_factor"]
         st.session_state[f"{state_prefix}_snr"] = defaults["snr"]
-        st.session_state[f"{state_prefix}_preset"] = "Custom"
+        st.session_state[f"{state_prefix}_preset"] = "Default"
         st.session_state[reset_flag_key] = False
         st.rerun()
 
@@ -599,24 +630,14 @@ def render_ui():
         ax.set_ylabel("Density")
         st.pyplot(fig)
         plt.close(fig)
-
-    with st.expander("📖 How to read the Posterior"):
-        st.markdown(r"""
-            **Continuous Posterior Density (KDE):** This plot shows the continuous probability distribution over the model index. Since our method learns an approximate neural posterior $q(\theta | x)$,
-            we can draw many samples from this posterior (typically around 2000). From these samples, we estimate a smooth posterior density using Kernel Density Estimation (KDE).
-            
-            - **Ideal Range Highlight:** A perfectly calibrated model should produce a **uniform distribution** 
-              filling the entire parameter space where $\theta$ is rounded to the correct model index, here represented by the shaded box.
-            - **Estimator Mean ± Std:** The vertical marker and error bars represent the model's quantitative estimate.
-        """)
         
     with st.expander("🧪 Interesting things to try"):
         st.markdown(r"""
             There’s a lot of sliders to handle! To guide your exploration, we’ve included several presets:
 
-            - **Default:** Here, the experimental values (right) are the same as the ones the model was trained on (left). The two posteriors should match up quite well. Try increasing the SNR (reducing noise); you'll see the posterior converge more tightly on the correct bin. Interestingly, even with zero noise, the model still struggles to differentiate between late-stage conformations—proving that some ambiguity is inherent!
+            - **Default:** Here, the experimental values (used in the right image) are the same as the ones the model was trained on (used in the left image). The two posteriors should match up quite well. Try modifying the imaging parameters directly and increasing the SNR (thus reducing noise); you'll see the posterior converge more tightly on the correct bin. Interestingly, even with very little noise, the model still struggles to differentiate between late-stage conformations—proving that some ambiguity is inherent (shouldn't be suprising after seeing the embedding experiment, right?)!
             
-            - **Clean:** What happens if we remove the effect of the microscope entirely? By decreasing CTF effects and noise, we get projections that are almost human-readable. You might expect this to help the model, but remember: the model was never trained on 'clean' images. While it still works for the standing cat, it often becomes **confidently wrong** for lying-down poses—predicting an incorrect model with extremely high confidence.
+            - **Clean:** What happens if we remove the effect of the microscope entirely and test our model on clean projections?? By decreasing CTF effects and noise, we get projections that are almost human-understandable. You might expect this to help the model, but remember: the model was never trained on "clean" images. While it still works for the standing cat, it often becomes **confidently wrong** for lying-down poses—predicting an incorrect model with extremely high confidence.
             
             - **High Noise / High Defocus:** Here we stress the model by making the image quality worse. Performance drops as expected, but interestingly, the model is also far less confident (the posterior broadens). It’s often better to have a model that knows it's uncertain than one that is confidently incorrect!
         """)

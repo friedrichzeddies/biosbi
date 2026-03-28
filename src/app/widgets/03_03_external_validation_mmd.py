@@ -355,33 +355,35 @@ def render_ui():
     with cfg_left:
         c1, c2, c3 = st.columns([2, 2, 1.5])
         with c1:
-            trained_model_name = st.selectbox("Embedding network from model", model_names)
+            trained_model_name = st.selectbox("Embedding network from model", model_names, key="mmd_trained_model")
         with c2:
             mode = st.selectbox(
                 "External misspecification mode",
                 ["Parameter shift", "Structure shift"],
+                key="mmd_mode",
                 help="Parameter shift perturbs imaging/noise parameters while keeping structures fixed. "
                 "Structure shift changes the structure source model.",
             )
         with c3:
-            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000)
+            num_images = st.select_slider("Images per dataset", options=[200, 500, 1000, 1500, 2000, 3000], value=1000, key="mmd_num_images")
 
         with st.expander("Advanced runtime and test settings", expanded=False):
             t1, t2, t3, t4 = st.columns(4)
             with t1:
-                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50)
+                batch_size = st.slider("Simulation batch size", 50, 1000, 250, step=50, key="mmd_batch_size")
             with t2:
-                alpha = st.slider("Significance alpha", 0.001, 0.2, 0.05, step=0.001)
+                alpha = st.slider("Significance alpha", 0.001, 0.2, 0.05, step=0.001, key="mmd_alpha")
             with t3:
-                num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10)
+                num_permutations = st.slider("Permutation samples", 20, 300, 100, step=10, key="mmd_num_permutations")
             with t4:
-                perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50)
+                perm_subset = st.slider("Permutation subset size", 100, 1000, 400, step=50, key="mmd_perm_subset")
 
             d1, d2 = st.columns(2)
             with d1:
                 deterministic_permutations = st.checkbox(
                     "Deterministic permutation sampling",
                     value=True,
+                    key="mmd_deterministic_permutations",
                     help="If enabled, subset sampling and permutation draws are reproduced from a fixed seed.",
                 )
             with d2:
@@ -391,12 +393,14 @@ def render_ui():
                     max_value=1_000_000,
                     value=42,
                     step=1,
+                    key="mmd_permutation_seed",
                     disabled=not deterministic_permutations,
                 )
 
             show_permutation_plot = st.checkbox(
                 "Show permutation null-distribution plot",
                 value=True,
+                key="mmd_show_permutation_plot",
                 help="Optional diagnostic: observed MMD^2 compared to shuffled-label null distribution.",
             )
 
@@ -437,6 +441,7 @@ def render_ui():
                 "External structure source model",
                 model_names,
                 index=model_names.index(default_alt),
+                key="mmd_alt_name"
             )
             alt_model_dir = os.path.join(base_dir, alt_name)
             try:

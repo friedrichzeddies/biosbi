@@ -79,11 +79,6 @@ def generate_image_for_model(simulator, model_idx, rot_x, rot_y, rot_z):
 
 @st.fragment
 def render_ui():
-    st.title("Ill-Posedness: Ambiguous Conformations")
-    st.markdown("""
-        See how different 3D conformations can produce indistinguishable 2D pictures from specific angles. 
-        We then query the SBI posterior to see if it successfully handles this ambiguity by assigning valid probabilities.
-    """)
     
     models_base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
     if os.path.exists(models_base_dir):
@@ -148,6 +143,11 @@ def render_ui():
             plt.close(fig)
             
     st.divider()
+    
+    # Redo-sampling button to regenerate noise and re-evaluate posterior
+    btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
+    with btn_col2:
+        st.button("🔄 Redo Sampling (Generate New Noise & Infer)", use_container_width=True)
     
     # 3. Dynamic Inference Block
     if posterior is None:
@@ -247,10 +247,10 @@ def render_ui():
             **Continuous Posterior Density (KDE):** This plot shows the continuous probability distribution over the model index. Since our method learns an approximate neural posterior $q(\theta | x)$,
             we can draw many samples from this posterior (typically around 2000). From these samples, we estimate a smooth posterior density using Kernel Density Estimation (KDE): conceptually, KDE places many small bell curves (otherwise known as _Gaussian kernels_) at the sampled values and adds them up, such that we receive a smooth approximation of the neural posterior estimate.
             During training, the conformation index is sampled from a **continuous uniform distribution** over the entire range of models.
-            When generating a new training set ($\theta, x_{obs}$) you first sample from your priors and get $\theta = 0.4434$. For the generation of the final image ths is then rounded to Model 0 before performing the simulation pass.
+            When generating a new training set ($\theta, x_{obs}$) one sample from the priors and gets, for example, $\theta = 0.4434$. For the generation of the final image ths is then rounded to Model 0 before performing the simulation pass.
             
             - **Ideal Range Highlight:** Due to this training scheme, a perfectly calibrated model should produce a **uniform distribution** 
-              filling the entire parameter space where it $\theta$ is rounded to the correct model index, here represented by the shaded box.
+              filling the entire parameter space where it $\theta$ is rounded to the correct model index, here represented by the shaded box. Note: We are not sure why the estimator seems to struggle with the very boundaries of possible conformational indices.
             - **Estimator Mean ± Std:** The vertical marker and error bars represent the model's quantitative estimate.
         """)
         
@@ -258,16 +258,16 @@ def render_ui():
         st.markdown("""
             Here are some key insights to explore in this widget:
             
-            1. **Conformational Confidence Shifts:** Compare 'early stage' (low index) vs 'late stage' (high index) transformations. 
-               You may notice the model is more certain for early changes. As the conformational differences become more subtle 
-               (look at the 3D cats above), the model 'admits' its uncertainty by producing broader, flatter distributions.
+            1. **Conformational Confidence Changes:** Compare 'early' (low index) vs 'late' (high index) conformationalal changes. If you don't remember how the cat animation looks, scroll up a bit ;) 
+               You may notice the model is more certain for earlier indices. This is probably due to the fact that the underlying conformational differences become more subtle 
+                and thus the model's uncertainty increases. This results in producing broader, flatter distributions.
             
             2. **The "Angle" of Ambiguity:** Try rotating the models so they are viewed from the top or bottom. 
                When features like the feet and tail become less visible, even models trained on vast datasets struggle to 
                distinguish between similar conformations. We often, depending on the noise, get very ambigous results for rotations of (0°,180°,~310°).
             
             3. **Learning from Noise:** Despite the images often looking like pure static to our eyes due to high noise and 
-               CTF effects, the model still extracts structural features that allow it to perform inference. We think that's pretty amazing
+               CTF effects, the model still extracts structural features that allow it to perform inference. We think that's pretty amazing.
         """)
 
 if __name__ == "__main__":

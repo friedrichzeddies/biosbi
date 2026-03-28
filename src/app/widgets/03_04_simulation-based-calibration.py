@@ -10,32 +10,32 @@ def _apply_preset():
     MU_MIN, MU_MAX = -4.0, 4.0
     SIG_MIN, SIG_MAX = 0.1, 3.0
 
-    if "sbc_1_true_theta" in st.session_state:
-        t = st.session_state.sbc_1_true_theta
-        
-        target_mu = st.session_state.get("sbc_1_mu", 0.0)
-        target_sig = st.session_state.get("sbc_1_sigma", 1.0)
+    target_mu = st.session_state.get("sbc_1_mu", 0.0)
+    target_sig = st.session_state.get("sbc_1_sigma", 1.0)
 
-        if preset == "Exact Match":
-            target_mu = float(t)
-            target_sig = 1.0
-        elif preset == "Model Too Certain":
-            target_mu = float(t)
-            target_sig = 0.2
-        elif preset == "Model Too Uncertain":
-            target_mu = float(t)
-            target_sig = 3.0
-        elif preset == "Model Overestimating":
-            target_mu = float(t) + 1.0
-            target_sig = 1.0
-        elif preset == "Model Underestimating":
-            target_mu = float(t) - 1.0
-            target_sig = 1.0
-        
-        # Apply clamped values to session state
-        if preset != "Manual":
-            st.session_state.sbc_1_mu = float(np.clip(target_mu, MU_MIN, MU_MAX))
-            st.session_state.sbc_1_sigma = float(np.clip(target_sig, SIG_MIN, SIG_MAX))
+    if preset == "Exact Match":
+        target_mu = 0.0
+        target_sig = 1.0
+    elif preset == "Model Too Certain":
+        target_mu = 0.0
+        target_sig = 0.2
+    elif preset == "Model Too Uncertain":
+        target_mu = 0.0
+        target_sig = 3.0
+    elif preset == "Model Overestimating":
+        target_mu = 1.5
+        target_sig = 1.0
+    elif preset == "Model Underestimating":
+        target_mu = -1.5
+        target_sig = 1.0
+    
+    # Apply clamped values to session state
+    if preset != "Manual":
+        st.session_state.sbc_1_mu = float(np.clip(target_mu, MU_MIN, MU_MAX))
+        st.session_state.sbc_1_sigma = float(np.clip(target_sig, SIG_MIN, SIG_MAX))
+
+def _make_manual():
+    st.session_state.sbc_preset = "Manual"
 
 @st.fragment
 def _render_single_trial(post_mu, post_sigma, M):
@@ -48,7 +48,6 @@ def _render_single_trial(post_mu, post_sigma, M):
 
     if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", use_container_width=True):
         st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
-        _apply_preset()
 
     true_theta = st.session_state.sbc_1_true_theta
     st.markdown(f"**Current True $\\theta^*$**: `{true_theta:+.3f}`")
@@ -74,7 +73,7 @@ def _render_single_trial(post_mu, post_sigma, M):
     x = np.linspace(x_min, x_max, 500)
     y = stats.norm.pdf(x, post_mu, post_sigma)
 
-    ax1.plot(x, y, color='blue', label='Predicted Posterior $Q(\\theta)$')
+    ax1.plot(x, y, color='blue', label='Predicted Posterior $Q(\\theta|x)$')
     ax1.fill_between(x, 0, y, color='blue', alpha=0.15)
 
     # Plot samples as blue rug ticks
@@ -108,7 +107,7 @@ def _render_histogram(post_mu, post_sigma, M):
     # 1. Draw N true thetas from the True Posterior N(0, 1) (the red dashed curve)
     true_thetas = np.random.normal(0, 1.0, N)
 
-    # 2. Draw M samples from the Predicted Posterior N(post_mu, post_sigma) for each trial (the blue curve)
+    # 2. Draw M samples from the Predicted Posterior N(post_mu, post_sigma) for each trial
     # Shape: (N, M)
     mass_samples = np.random.normal(post_mu, post_sigma, (N, M))
 
@@ -157,20 +156,17 @@ def _render_histogram(post_mu, post_sigma, M):
 
 
 def render():
-    st.markdown("## Interactive SBC Visualizer")
-    st.write("Simulation-Based Calibration provides a geometric sanity check: if our neural network genuinely learned the correct posterior distribution $p(\\theta | x)$, then the true parameter $\\theta^*$ behind any simulated observation $x$ must look like a perfectly ordinary drawn sample from that predicted posterior.")
-
     # Shared controls (outside fragments — changing these re-runs the whole page, updating both panels)
     presets = ["Manual", "Exact Match", "Model Too Certain", "Model Too Uncertain", "Model Overestimating", "Model Underestimating"]
     st.selectbox("Quick Presets", presets, key="sbc_preset", on_change=_apply_preset)
 
     col1, col2 = st.columns(2)
     with col1:
-        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -4.0, 4.0, -1.0, 0.1, key="sbc_1_mu")
+        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -4.0, 4.0, 0.0, 0.1, key="sbc_1_mu", on_change=_make_manual)
     with col2:
-        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
+        post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma", on_change=_make_manual)
 
-    M = st.slider("Number of Predicted Posterior Samples $M$", 10, 100, 20, 1, key="sbc_1_m")
+    M = st.slider("Number of Predicted Posterior Samples $M$", 10, 100, 20, 1, key="sbc_1_m", on_change=_make_manual)
 
     # Side-by-side fragments — each re-runs independently
     vis_col1, vis_col2 = st.columns(2)
