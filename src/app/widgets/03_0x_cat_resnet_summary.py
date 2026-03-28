@@ -113,6 +113,31 @@ def load_cat_resnet_assets(model_name: str):
     sigma_default = _get_scalar_or_mean(sim_cfg.get("SIGMA", 1.0))
     shift_default = _get_scalar_or_mean(sim_cfg.get("SHIFT", 0.0))
 
+    # Precompute global vmin/vmax across all indexed conformations (identity rotation)
+    num_models = cat_models.shape[0]
+    all_quats = torch.tensor([[1.0, 0.0, 0.0, 0.0]], dtype=torch.float32).repeat(num_models, 1)
+    all_sigmas = torch.tensor([sigma_default], dtype=torch.float32)
+    all_shifts = torch.zeros((num_models, 2), dtype=torch.float32)
+
+    with torch.no_grad():
+        all_images = project_density(
+            cat_models,
+            all_quats,
+            all_sigmas,
+            all_shifts,
+            torch.tensor(sim_cfg["N_PIXELS"], dtype=torch.float32),
+            torch.tensor(sim_cfg["PIXEL_SIZE"], dtype=torch.float32),
+        )
+        all_images_normalized = gaussian_normalize_image(all_images)
+        all_summaries = est_utils.compute_latent_repr(
+            estimator=estimator,
+            images=all_images_normalized,
+            batch_size=num_models,
+            device="cpu",
+        )
+        vmin = float(all_summaries.min())
+        vmax = float(all_summaries.max())
+
     return {
         "cat_models": cat_models,
         "estimator": estimator,
@@ -121,6 +146,8 @@ def load_cat_resnet_assets(model_name: str):
         "sigma_bounds": (sigma_lo, sigma_hi),
         "sigma_default": sigma_default,
         "shift_default": shift_default,
+        "vmin": vmin,
+        "vmax": vmax,
     }
 
 
@@ -252,7 +279,13 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
             summary_img_np = summary_img.detach().cpu().numpy()
             st.write(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
             fig_sum, ax_sum = plt.subplots(figsize=(5, 4))
-            im = ax_sum.imshow(summary_img_np, cmap="viridis", aspect="auto")
+            im = ax_sum.imshow(
+                summary_img_np,
+                cmap="viridis",
+                aspect="auto",
+                vmin=assets["vmin"],
+                vmax=assets["vmax"],
+            )
             if summary_img_np.shape[0] == 1:
                 ax_sum.set_xlabel("Feature index")
                 ax_sum.set_ylabel("Row")

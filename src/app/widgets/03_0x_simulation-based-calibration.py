@@ -5,23 +5,37 @@ import scipy.stats as stats
 
 def _apply_preset():
     preset = st.session_state.sbc_preset
+    
+    # Range boundaries for clamping (must match st.slider calls below)
+    MU_MIN, MU_MAX = -4.0, 4.0
+    SIG_MIN, SIG_MAX = 0.1, 3.0
+
     if "sbc_1_true_theta" in st.session_state:
         t = st.session_state.sbc_1_true_theta
+        
+        target_mu = st.session_state.get("sbc_1_mu", 0.0)
+        target_sig = st.session_state.get("sbc_1_sigma", 1.0)
+
         if preset == "Exact Match":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 1.0
+            target_mu = float(t)
+            target_sig = 1.0
         elif preset == "Model Too Certain":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 0.2
+            target_mu = float(t)
+            target_sig = 0.2
         elif preset == "Model Too Uncertain":
-            st.session_state.sbc_1_mu = float(t)
-            st.session_state.sbc_1_sigma = 3.0
+            target_mu = float(t)
+            target_sig = 3.0
         elif preset == "Model Overestimating":
-            st.session_state.sbc_1_mu = float(t) + 1.0
-            st.session_state.sbc_1_sigma = 1.0
+            target_mu = float(t) + 1.0
+            target_sig = 1.0
         elif preset == "Model Underestimating":
-            st.session_state.sbc_1_mu = float(t) - 1.0
-            st.session_state.sbc_1_sigma = 1.0
+            target_mu = float(t) - 1.0
+            target_sig = 1.0
+        
+        # Apply clamped values to session state
+        if preset != "Manual":
+            st.session_state.sbc_1_mu = float(np.clip(target_mu, MU_MIN, MU_MAX))
+            st.session_state.sbc_1_sigma = float(np.clip(target_sig, SIG_MIN, SIG_MAX))
 
 @st.fragment
 def _render_single_trial(post_mu, post_sigma, M):
@@ -152,7 +166,7 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -1.5, 1.5, -1.0, 0.1, key="sbc_1_mu")
+        post_mu = st.slider("Predicted Posterior Mean $\\mu$", -4.0, 4.0, -1.0, 0.1, key="sbc_1_mu")
     with col2:
         post_sigma = st.slider("Predicted Posterior StdDev $\\sigma$", 0.1, 3.0, 1.0, 0.1, key="sbc_1_sigma")
 

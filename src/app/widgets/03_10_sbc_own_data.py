@@ -41,7 +41,7 @@ def load_assets(model_dir):
 # ==========================================
 
 @st.fragment
-def _render_single_trial(simulator, posterior, M):
+def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_factor_scale):
     st.markdown("### 1. Single Trial Sandbox")
     st.write("Draw a single ground-truth conformation from the prior, simulate its 2D projection, and ask the model to guess the posterior.")
     
@@ -50,7 +50,15 @@ def _render_single_trial(simulator, posterior, M):
         parameters = simulator._priors.sample((1,))
         true_idx = parameters[0][0, 0].item()
         
-        # 2. Simulate Image x
+        # 2. Apply Misspecification Shifts (Skill #2)
+        if snr_scale != 1.0:
+            parameters[7] += np.log10(snr_scale)
+        if defocus_scale != 1.0:
+            parameters[4] *= defocus_scale
+        if b_factor_scale != 1.0:
+            parameters[5] *= b_factor_scale
+        
+        # 3. Simulate Image x
         with st.spinner("Simulating..."):
             image = cryo_em_simulator(
                 simulator._models,
@@ -92,10 +100,26 @@ def _render_single_trial(simulator, posterior, M):
                     
                     num_models = len(simulator._models)
                     
+                    # Calculate Posterior Statistics (Skill #6)
+                    post_mean = np.mean(full_kde_samples)
+                    post_std = np.std(full_kde_samples)
+                    
                     # --- 1. KDE Plot (Continuous) ---
+                    # Model Belief
                     sns.kdeplot(full_kde_samples, ax=ax_kde, fill=True, color='purple', label="Model Belief (KDE)")
-                    ax_kde.plot(sbc_samples, np.zeros_like(sbc_samples), 'b|', markersize=10, alpha=0.5, label=f"SBC Samples ($M={M}$)")
-                    ax_kde.axvline(true_idx, color='red', linewidth=2, label=f"True $\\theta^*$ ({true_idx:.2f})")
+                    
+                    # Rug Ticks for SBC Samples (Skill #8)
+                    ax_kde.scatter(sbc_samples, np.zeros_like(sbc_samples), color='purple', marker='|', s=200, alpha=0.5, label=f"SBC Samples ($M={M}$)", zorder=3)
+                    
+                    # Ideal Range (Skill #6)
+                    target_bin = int(np.round(true_idx))
+                    ax_kde.axvspan(target_bin - 0.5, target_bin + 0.5, color='red', alpha=0.1, label=f"Ideal Range (True Model {target_bin})")
+                    
+                    # Lifted Estimator Statistics (Skill #6)
+                    ax_kde.errorbar(post_mean, 0.1, xerr=post_std, fmt='|', color='purple', capsize=3, elinewidth=2, markeredgewidth=2, label="Estimator Mean ± Std")
+                    
+                    # True Parameter Marker (SBC Context)
+                    ax_kde.axvline(true_idx, color='red', linewidth=1.5, linestyle='--', label=f"True $\\theta^*$ ({true_idx:.2f})")
                     
                     # De-Quantization Boundaries (Skill #6)
                     ticks = []
@@ -144,7 +168,7 @@ def _render_single_trial(simulator, posterior, M):
 # ==========================================
 
 @st.fragment
-def _render_mass_sbc(simulator, posterior, M):
+def _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor_scale):
     st.markdown("### 2. Mass Trial Validation")
     st.write("Perform $N$ trials to check if the model is statistically well-calibrated across your priors.")
     
@@ -171,7 +195,15 @@ def _render_mass_sbc(simulator, posterior, M):
             params = simulator._priors.sample((current_batch_size,))
             true_indices = params[0][:, 0]
             
-            # 2. Simulate Images
+            # 2. Apply Misspecification Shifts (Skill #2)
+            if snr_scale != 1.0:
+                params[7] += np.log10(snr_scale)
+            if defocus_scale != 1.0:
+                params[4] *= defocus_scale
+            if b_factor_scale != 1.0:
+                params[5] *= b_factor_scale
+            
+            # 3. Simulate Images
             images = cryo_em_simulator(
                 simulator._models,
                 *params,
@@ -280,7 +312,7 @@ def render():
     """)
     
     # 1. Model Selection
-    models_base_dir = "src/app/data/models"
+    models_base_dir = os.path.join(os.path.dirname(__file__), "..", "data", "models")
     if not os.path.exists(models_base_dir):
         st.error("Models directory not found!")
         return
@@ -292,17 +324,69 @@ def render():
     # 2. Shared Config
     M = st.slider("Number of Predicted Samples $M$ for SBC", 10, 100, 40, 5, help="How many samples to use for calculating the rank in each trial.")
     
+    # Preset callback
+    def _apply_snr_preset():
+        preset = st.session_state.sbc_snr_preset
+        if preset == "Clean (10x SNR + CTF Override)":
+            st.session_state.sbc_snr_scale = 10.0
+            st.session_state.sbc_defocus_scale = 0.25
+            st.session_state.sbc_b_factor_scale = 0.0
+        elif preset == "High Noise (0.01x SNR)":
+            st.session_state.sbc_snr_scale = 0.01
+            st.session_state.sbc_defocus_scale = 1.0
+            st.session_state.sbc_b_factor_scale = 1.0
+        elif preset == "Training Prior (1x)":
+            st.session_state.sbc_snr_scale = 1.0
+            st.session_state.sbc_defocus_scale = 1.0
+            st.session_state.sbc_b_factor_scale = 1.0
+
+    with st.expander("🛠️ Advanced Misspecification Options"):
+        st.markdown("**Benchmark Presets**")
+    
+        st.selectbox("Inference Stress-Test Presets", 
+                     ["Custom", "Training Prior (1x)", "Clean (10x SNR + CTF Override)", "High Noise (0.01x SNR)"], 
+                     index=0, key="sbc_snr_preset", on_change=_apply_snr_preset)
+
+        st.markdown("**Manual Controls**")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if "sbc_snr_scale" not in st.session_state:
+                st.session_state.sbc_snr_scale = 1.0
+            snr_scale = st.slider("SNR Scale", 0.01, 10.0, step=0.01, key="sbc_snr_scale", 
+                                 help="Scale the ground-truth SNR of the testing images.")
+        with c2:
+            if "sbc_defocus_scale" not in st.session_state:
+                st.session_state.sbc_defocus_scale = 1.0
+            defocus_scale = st.slider("Defocus Scale", 0.1, 2.0, step=0.05, key="sbc_defocus_scale",
+                                     help="Scale the ground-truth defocus. Clean images typically have low defocus (~0.5um).")
+        with c3:
+            if "sbc_b_factor_scale" not in st.session_state:
+                st.session_state.sbc_b_factor_scale = 1.0
+            b_factor_scale = st.slider("B-factor Scale", 0.0, 2.0, step=0.1, key="sbc_b_factor_scale",
+                                      help="Scale the ground-truth B-factor (envelope decay). 0.0 means no decay.")
+
     # 3. Load Assets
     simulator, posterior = load_assets(model_dir)
     
     if simulator is None:
         st.error(f"Could not load simulator for {selected_model_name}.")
         return
+    
 
     # 4. Render Fragments
-    _render_single_trial(simulator, posterior, M)
+    _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_factor_scale)
     st.divider()
-    _render_mass_sbc(simulator, posterior, M)
+    _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor_scale)
+
+    st.divider()
+    with st.expander("📝 General Observations"):
+        st.markdown("""
+            **Robustness to Noise:**  
+            Quite misspecification robust against noise (e.g., 0.1x SNR does not lead to strong miscalibration). Presumably, this is because the model "learned" to be naturally less confident for very noisy images, staying statistically "honest" even as the signal degrades.
+            
+            **CTF Sensitivity:**  
+            Under heavy induced misspecification—especially in regards to **Defocus** or **B-factor** changes—the model does appear to miscalibrate. This suggests information loss from blurring is harder for the model to quantify than raw additive noise.
+        """)
 
 if __name__ == "__main__":
     st.set_page_config(page_title="SBC Own Data", layout="centered")

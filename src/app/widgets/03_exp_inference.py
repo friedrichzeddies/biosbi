@@ -84,22 +84,56 @@ def load_assets(model_dir):
     return simulator, posterior, train_params
 
 
-def build_payload(simulator, state_prefix):
+def get_simulation_defaults(simulator):
     config = simulator._config
-    num_models = len(simulator._models)
-
-    sigma_low, sigma_high, sigma_default = _range_defaults(config, "SIGMA", 0.5, 2.0)
-    defocus_low, defocus_high, defocus_default = _range_defaults(config, "DEFOCUS", 0.5, 4.0)
-    b_low, b_high, b_default = _range_defaults(config, "B_FACTOR", 0.5, 3.0)
-    snr_low, snr_high, snr_default = _range_defaults(config, "SNR", 0.01, 0.5)
+    _, _, sigma_default = _range_defaults(config, "SIGMA", 0.5, 2.0)
+    _, _, defocus_default = _range_defaults(config, "DEFOCUS", 0.5, 4.0)
+    _, _, b_default = _range_defaults(config, "B_FACTOR", 0.5, 3.0)
+    _, _, snr_default = _range_defaults(config, "SNR", 0.01, 0.5)
     amp_default = _as_float(config.get("AMP", 0.1), 0.1)
-    shift_default = _as_float(config.get("SHIFT", 0.0), 0.0)
+    return {
+        "sigma": float(sigma_default),
+        "amp": float(amp_default),
+        "defocus": float(defocus_default),
+        "b_factor": float(b_default),
+        "snr": float(snr_default),
+    }
+
+
+def build_payload(simulator, state_prefix, defaults):
+    num_models = len(simulator._models)
 
     st.subheader("Experiment Payload")
     st.markdown(
         "Choose simulation settings and send them as one payload to generate a never-seen test image."
     )
 
+    # --- Preset System ---
+    presets = {
+        "Custom": None,
+        "Default": defaults,
+        "Clean": {
+            "sigma": defaults["sigma"],
+            "amp": defaults["amp"],
+            "defocus": 0.5,
+            "b_factor": 0.0,
+            "snr": 1.0,
+        },
+        "High Noise": {
+            "snr": 0.01,
+        },
+        "High Defocus": {
+            "defocus": 4.0,
+        },
+    }
+    
+    selected_preset = st.selectbox("Presets", list(presets.keys()), key=f"{state_prefix}_preset")
+    if selected_preset != "Custom":
+        p_vals = presets[selected_preset]
+        for k, v in p_vals.items():
+            st.session_state[f"{state_prefix}_{k}"] = v
+
+    # --- Payload UI ---
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         true_index = st.slider(
@@ -109,82 +143,82 @@ def build_payload(simulator, state_prefix):
             value=0,
             key=f"{state_prefix}_true_index",
         )
-        sigma = st.number_input(
-            "Sigma",
-            value=float(sigma_default),
-            step=0.05,
-            key=f"{state_prefix}_sigma",
-            help=f"Training reference range: [{sigma_low:.3f}, {sigma_high:.3f}]",
-        )
-        amp = st.number_input(
-            "Amplitude contrast (AMP)",
-            value=float(amp_default),
-            step=0.01,
-            key=f"{state_prefix}_amp",
-        )
 
     with c2:
-        rot_x = st.slider("Rot X (deg)", 0, 360, 0, key=f"{state_prefix}_rot_x")
-        rot_y = st.slider("Rot Y (deg)", 0, 360, 45, key=f"{state_prefix}_rot_y")
-        rot_z = st.slider("Rot Z (deg)", 0, 360, 0, key=f"{state_prefix}_rot_z")
+        rot_x = st.slider("Rot X (deg)", 0, 360, 0, key=f"{state_prefix}_rot_x", help="Rotation around the X-axis in degrees.")
+        rot_y = st.slider("Rot Y (deg)", 0, 360, 45, key=f"{state_prefix}_rot_y", help="Rotation around the Y-axis in degrees.")
+        rot_z = st.slider("Rot Z (deg)", 0, 360, 0, key=f"{state_prefix}_rot_z", help="Rotation around the Z-axis in degrees.")
 
     with c3:
-        shift_x = st.number_input(
-            "Shift X",
-            value=float(shift_default),
-            step=0.05,
-            key=f"{state_prefix}_shift_x",
-        )
-        shift_y = st.number_input(
-            "Shift Y",
-            value=float(shift_default),
-            step=0.05,
-            key=f"{state_prefix}_shift_y",
-        )
         defocus = st.number_input(
-            "Defocus",
-            value=float(defocus_default),
+            "Defocus (μm)",
+            value=float(defaults["defocus"]),
             step=0.05,
             key=f"{state_prefix}_defocus",
-            help=f"Training reference range: [{defocus_low:.3f}, {defocus_high:.3f}]",
+            help="The defocus of the microscope is given in units of micrometres (μm).",
+        )
+        b_factor = st.number_input(
+            "B-factor (Å²)",
+            value=float(defaults["b_factor"]),
+            step=0.05,
+            key=f"{state_prefix}_b_factor",
+            help="The B-factor is given in units of Angström squared (Å²) and defines the decay rate of the CTF envelope function.",
         )
 
     with c4:
-        b_factor = st.number_input(
-            "B-factor",
-            value=float(b_default),
-            step=0.05,
-            key=f"{state_prefix}_b_factor",
-            help=f"Training reference range: [{b_low:.3f}, {b_high:.3f}]",
-        )
         snr_linear = st.number_input(
             "SNR (linear)",
             min_value=1e-6,
-            value=max(1e-6, float(snr_default)),
+            value=max(1e-6, float(defaults["snr"])),
             step=0.01,
             key=f"{state_prefix}_snr",
-            help=f"Training reference range: [{snr_low:.3f}, {snr_high:.3f}]",
+            help="The SNR (Signal-to-noise ratio) linear is the ratio of signal power to noise power. It defines the amount of noise in simulated images. For example, at SNR=1.0, signal and noise have equal power.",
         )
-        num_samples = st.slider(
-            "Posterior samples",
-            min_value=200,
-            max_value=4000,
-            value=1200,
-            step=100,
-            key=f"{state_prefix}_num_samples",
+        sigma = st.number_input(
+            "Sigma",
+            value=float(defaults["sigma"]),
+            step=0.05,
+            key=f"{state_prefix}_sigma",
+            help="The atom sigma defines the size of the Gaussians used to approximate the protein's electron density. Here, each Gaussian represents one amino acid, and while all Gaussians have the same sigma, the value is made to vary in the simulations.",
         )
+        amp = st.number_input(
+            "Amplitude contrast (AMP)",
+            value=float(defaults["amp"]),
+            step=0.01,
+            key=f"{state_prefix}_amp",
+            help="The Amplitude is a unitless parameter which ranges between 0 and 1.",
+        )
+        
+        # CTF Popover
+        with st.popover("Show CTF Preview"):
+            pixel_size = float(simulator._pixel_size.item())
+            k_1d = np.linspace(0, 1 / (2 * max(1e-6, pixel_size)), 100)
+            k2 = k_1d**2
+            env = np.exp(-b_factor * k2 * 0.5)
+            phase = defocus * np.pi * 2.0 * 10000 * 0.019866
+            ctf_val = (-amp * np.cos(phase * k2 * 0.5) - np.sqrt(max(0, 1 - amp**2)) * np.sin(phase * k2 * 0.5)) * env / max(1e-6, amp)
+            
+            fig_ctf, ax_ctf = plt.subplots(figsize=(4, 2))
+            ax_ctf.plot(k_1d, ctf_val, color="#1f77b4", lw=1.5)
+            ax_ctf.axhline(0, color="gray", lw=0.5, ls="--")
+            ax_ctf.set_title("CTF Preview", fontsize=10)
+            ax_ctf.tick_params(axis='both', which='major', labelsize=8)
+            ax_ctf.set_xlabel("k (1/Å)", fontsize=8)
+            plt.tight_layout()
+            st.pyplot(fig_ctf)
+            plt.close(fig_ctf)
 
     payload = {
         "index": int(true_index),
         "rotation_deg_xyz": [float(rot_x), float(rot_y), float(rot_z)],
         "sigma": float(sigma),
-        "shift_xy": [float(shift_x), float(shift_y)],
+        "shift_xy": [0.0, 0.0],
         "defocus": float(defocus),
         "b_factor": float(b_factor),
         "amp": float(amp),
         "snr_linear": float(snr_linear),
         "snr_log10_internal": float(np.log10(max(1e-8, snr_linear))),
-        "posterior_samples": int(num_samples),
+        "posterior_samples": 2000,
     }
     return payload
 
@@ -193,13 +227,6 @@ def randomize_payload_controls(simulator, state_prefix):
     config = simulator._config
     num_models = len(simulator._models)
     rng = np.random.default_rng()
-
-    shift_default = abs(_as_float(config.get("SHIFT", 0.0), 0.0))
-    shift_bound = max(25.0, shift_default if shift_default > 0 else 25.0)
-
-    amp_default = _as_float(config.get("AMP", 0.1), 0.1)
-    amp_low = max(1e-4, amp_default * 0.5)
-    amp_high = max(amp_low + 1e-4, amp_default * 1.5)
 
     st.session_state[f"{state_prefix}_true_index"] = int(rng.integers(0, max(1, num_models)))
     st.session_state[f"{state_prefix}_sigma"] = _sample_with_sane_fallback(
@@ -211,14 +238,12 @@ def randomize_payload_controls(simulator, state_prefix):
         5.0,
         rng,
     )
-    st.session_state[f"{state_prefix}_amp"] = float(rng.uniform(amp_low, amp_high))
+    st.session_state[f"{state_prefix}_amp"] = _sample_uniform_or_scalar(config, "AMP", 0.05, 0.15, rng)
 
     st.session_state[f"{state_prefix}_rot_x"] = int(rng.integers(0, 361))
     st.session_state[f"{state_prefix}_rot_y"] = int(rng.integers(0, 361))
     st.session_state[f"{state_prefix}_rot_z"] = int(rng.integers(0, 361))
 
-    st.session_state[f"{state_prefix}_shift_x"] = float(rng.uniform(-shift_bound, shift_bound))
-    st.session_state[f"{state_prefix}_shift_y"] = float(rng.uniform(-shift_bound, shift_bound))
     st.session_state[f"{state_prefix}_defocus"] = _sample_with_sane_fallback(
         config,
         "DEFOCUS",
@@ -248,44 +273,6 @@ def randomize_payload_controls(simulator, state_prefix):
     )
 
 
-def generate_image_from_payload(simulator, payload):
-    idx_tensor = torch.tensor([[payload["index"]]], dtype=torch.float32)
-    quat_np = R.from_euler("xyz", payload["rotation_deg_xyz"], degrees=True).as_quat()
-    quat_tensor = torch.tensor([quat_np], dtype=torch.float32)
-
-    sigma_tensor = torch.tensor([[payload["sigma"]]], dtype=torch.float32)
-    shift_tensor = torch.tensor([payload["shift_xy"]], dtype=torch.float32)
-    defocus_tensor = torch.tensor([[payload["defocus"]]], dtype=torch.float32)
-    b_factor_tensor = torch.tensor([[payload["b_factor"]]], dtype=torch.float32)
-    amp_tensor = torch.tensor([[payload["amp"]]], dtype=torch.float32)
-    snr_tensor = torch.tensor([[payload["snr_log10_internal"]]], dtype=torch.float32)
-
-    noisy = cryo_em_simulator(
-        simulator._models,
-        idx_tensor,
-        quat_tensor,
-        sigma_tensor,
-        shift_tensor,
-        defocus_tensor,
-        b_factor_tensor,
-        amp_tensor,
-        snr_tensor,
-        simulator._num_pixels,
-        simulator._pixel_size,
-    )
-
-    clean = project_density(
-        simulator._models[[payload["index"]]],
-        quat_tensor,
-        sigma_tensor,
-        shift_tensor,
-        simulator._num_pixels,
-        simulator._pixel_size,
-    )
-
-    return noisy, clean
-
-
 def summarize_predictions(theta_samples, true_index, num_models):
     preds = np.round(theta_samples).astype(int).clip(0, num_models - 1)
     counts = np.bincount(preds, minlength=num_models)
@@ -302,45 +289,6 @@ def summarize_predictions(theta_samples, true_index, num_models):
         "top_predicted_state_prob_percent": top_prob,
     }
     return preds, summary
-
-
-def sample_reference_from_training_prior(simulator, true_index):
-    params = simulator._priors.sample((1,))
-
-    index = torch.tensor([[true_index]], dtype=torch.float32)
-    quaternion = params[1]
-    sigma = params[2]
-    shift = params[3]
-    defocus = params[4]
-    b_factor = params[5]
-    amp = params[6]
-    snr = params[7]
-
-    noisy = cryo_em_simulator(
-        simulator._models,
-        index,
-        quaternion,
-        sigma,
-        shift,
-        defocus,
-        b_factor,
-        amp,
-        snr,
-        simulator._num_pixels,
-        simulator._pixel_size,
-    )
-
-    idx_int = int(index[0, 0].round().item())
-    clean = project_density(
-        simulator._models[[idx_int]],
-        quaternion,
-        sigma,
-        shift,
-        simulator._num_pixels,
-        simulator._pixel_size,
-    )
-
-    return noisy, clean, idx_int
 
 
 def infer_single_observation(posterior, image, num_samples, true_index, num_models):
@@ -363,13 +311,10 @@ def _payload_signature(payload):
         round(float(payload["rotation_deg_xyz"][1]), 6),
         round(float(payload["rotation_deg_xyz"][2]), 6),
         round(float(payload["sigma"]), 6),
-        round(float(payload["shift_xy"][0]), 6),
-        round(float(payload["shift_xy"][1]), 6),
         round(float(payload["defocus"]), 6),
         round(float(payload["b_factor"]), 6),
         round(float(payload["amp"]), 6),
         round(float(payload["snr_linear"]), 6),
-        int(payload["posterior_samples"]),
     )
 
 
@@ -411,211 +356,209 @@ def render_ui():
     )
 
     state_prefix = f"exp_{selected_model_name}"
-    preview_key = f"exp_preview_{selected_model_name}"
     result_key = f"exp_result_{selected_model_name}"
     resample_flag_key = f"exp_resample_ref_{selected_model_name}"
     random_flag_key = f"exp_randomize_{selected_model_name}"
+    reset_flag_key = f"exp_reset_{selected_model_name}"
+    ref_params_key = f"exp_ref_params_{selected_model_name}"
 
     def _request_reference_resample():
         st.session_state[resample_flag_key] = True
 
     def _request_random_config():
         st.session_state[random_flag_key] = True
+        
+    def _request_reset():
+        st.session_state[reset_flag_key] = True
 
-    # Important: apply randomization before payload widgets are instantiated,
-    # otherwise Streamlit forbids mutating those session keys in the same run.
-    random_requested = bool(st.session_state.get(random_flag_key, False))
-    if random_requested:
+    # --- Pre-calculate defaults and handle state logic BEFORE building widgets ---
+    defaults = get_simulation_defaults(simulator)
+
+    # Apply randomization (only if NOT instantiated)
+    if st.session_state.get(random_flag_key, False):
         randomize_payload_controls(simulator, state_prefix)
         st.session_state[random_flag_key] = False
         st.rerun()
 
-    payload = build_payload(simulator, state_prefix=state_prefix)
+    # Apply reset (only if NOT instantiated)
+    if st.session_state.get(reset_flag_key, False):
+        st.session_state[f"{state_prefix}_sigma"] = defaults["sigma"]
+        st.session_state[f"{state_prefix}_amp"] = defaults["amp"]
+        st.session_state[f"{state_prefix}_defocus"] = defaults["defocus"]
+        st.session_state[f"{state_prefix}_b_factor"] = defaults["b_factor"]
+        st.session_state[f"{state_prefix}_snr"] = defaults["snr"]
+        st.session_state[f"{state_prefix}_preset"] = "Custom"
+        st.session_state[reset_flag_key] = False
+        st.rerun()
 
-    control_col1, control_col2 = st.columns([1, 1])
+    payload = build_payload(simulator, state_prefix=state_prefix, defaults=defaults)
+
+    control_col1, control_col2, control_col3 = st.columns([1, 1, 1])
     with control_col1:
         st.button("Random configuration", on_click=_request_random_config)
     with control_col2:
-        st.markdown("")
+        st.button("Resample training reference", on_click=_request_reference_resample)
+    with control_col3:
+        st.button("Return to default values", on_click=_request_reset)
 
-    current_signature = _payload_signature(payload)
-    existing_preview = st.session_state.get(preview_key)
+    # --- Synchronized Rotation Management ---
+    quat_np = R.from_euler("xyz", payload["rotation_deg_xyz"], degrees=True).as_quat()
+    quat_tensor = torch.tensor([quat_np], dtype=torch.float32)
+
+    # --- Reference Parameter Management ---
     resample_requested = bool(st.session_state.get(resample_flag_key, False))
-
-    need_new_reference = (
-        existing_preview is None
-        or existing_preview["ref_true_index"] != payload["index"]
+    need_new_ref_params = (
+        st.session_state.get(ref_params_key) is None
+        or st.session_state[ref_params_key]["index"] != payload["index"]
         or resample_requested
     )
 
-    if need_new_reference:
-        ref_noisy, ref_clean, ref_true_idx = sample_reference_from_training_prior(
-            simulator,
-            payload["index"],
-        )
-    else:
-        ref_noisy = existing_preview["ref_noisy"]
-        ref_clean = existing_preview["ref_clean"]
-        ref_true_idx = existing_preview["ref_true_index"]
+    if need_new_ref_params:
+        p = simulator._priors.sample((1,))
+        st.session_state[ref_params_key] = {
+            "index": int(payload["index"]),
+            "sigma": p[2].clone(),
+            "shift": p[3].clone(),
+            "defocus": p[4].clone(),
+            "b_factor": p[5].clone(),
+            "amp": p[6].clone(),
+            "snr": p[7].clone(),
+        }
+        st.session_state[resample_flag_key] = False
+    
+    ref_p = st.session_state[ref_params_key]
 
-    need_new_experiment = (
-        existing_preview is None
-        or existing_preview.get("payload_signature") != current_signature
+    # --- Image Generation (Synchronized) ---
+    ref_noisy = cryo_em_simulator(
+        simulator._models,
+        torch.tensor([[ref_p["index"]]], dtype=torch.float32),
+        quat_tensor,
+        ref_p["sigma"],
+        ref_p["shift"],
+        ref_p["defocus"],
+        ref_p["b_factor"],
+        ref_p["amp"],
+        ref_p["snr"],
+        simulator._num_pixels,
+        simulator._pixel_size,
     )
-    if need_new_experiment:
-        exp_noisy, exp_clean = generate_image_from_payload(simulator, payload)
-    else:
-        exp_noisy = existing_preview["exp_noisy"]
-        exp_clean = existing_preview["exp_clean"]
+    ref_clean = project_density(
+        simulator._models[[ref_p["index"]]],
+        quat_tensor,
+        ref_p["sigma"],
+        ref_p["shift"],
+        simulator._num_pixels,
+        simulator._pixel_size,
+    )
 
-    preview = {
-        "payload": payload,
-        "payload_signature": current_signature,
-        "ref_noisy": ref_noisy,
-        "ref_clean": ref_clean,
-        "ref_true_index": ref_true_idx,
-        "exp_noisy": exp_noisy,
-        "exp_clean": exp_clean,
-    }
-    st.session_state[preview_key] = preview
-    st.session_state[resample_flag_key] = False
-        
-    result = preview
+    exp_noisy = cryo_em_simulator(
+        simulator._models,
+        torch.tensor([[payload["index"]]], dtype=torch.float32),
+        quat_tensor,
+        torch.tensor([[payload["sigma"]]], dtype=torch.float32),
+        torch.tensor([[0.0, 0.0]], dtype=torch.float32),
+        torch.tensor([[payload["defocus"]]], dtype=torch.float32),
+        torch.tensor([[payload["b_factor"]]], dtype=torch.float32),
+        torch.tensor([[payload["amp"]]], dtype=torch.float32),
+        torch.tensor([[payload["snr_log10_internal"]]], dtype=torch.float32),
+        simulator._num_pixels,
+        simulator._pixel_size,
+    )
+    exp_clean = project_density(
+        simulator._models[[payload["index"]]],
+        quat_tensor,
+        torch.tensor([[payload["sigma"]]], dtype=torch.float32),
+        torch.tensor([[0.0, 0.0]], dtype=torch.float32),
+        simulator._num_pixels,
+        simulator._pixel_size,
+    )
 
     overlay_clean = st.checkbox("Overlay clean density on noisy images", value=False)
 
     col_img1, col_img2 = st.columns(2, border=True)
     with col_img1:
-        st.markdown("Training-config reference sample")
+        st.markdown("**Reference Sample** (Training Distribution)")
         fig, ax = plt.subplots(figsize=(4, 4))
-        ref_noisy_np = result["ref_noisy"][0].numpy()
+        ref_noisy_np = ref_noisy[0].numpy()
         ax.imshow(ref_noisy_np, cmap="gray")
         if overlay_clean:
-            ref_clean_np = result["ref_clean"][0].numpy()
+            ref_clean_np = ref_clean[0].numpy()
             masked_clean = np.ma.masked_where(ref_clean_np < ref_clean_np.max() * 0.1, ref_clean_np)
             ax.imshow(masked_clean, cmap="hot", alpha=0.45)
-        ax.set_title(f"True state: {result['ref_true_index']}")
+        ax.set_title(f"True state: {ref_p['index']}")
         ax.axis("off")
         st.pyplot(fig)
         plt.close(fig)
 
     with col_img2:
-        st.markdown("User-defined experiment sample")
+        st.markdown("**Experiment Sample** (User Defined)")
         fig, ax = plt.subplots(figsize=(4, 4))
-        exp_noisy_np = result["exp_noisy"][0].numpy()
+        exp_noisy_np = exp_noisy[0].numpy()
         ax.imshow(exp_noisy_np, cmap="gray")
         if overlay_clean:
-            exp_clean_np = result["exp_clean"][0].numpy()
+            exp_clean_np = exp_clean[0].numpy()
             masked_clean = np.ma.masked_where(exp_clean_np < exp_clean_np.max() * 0.1, exp_clean_np)
             ax.imshow(masked_clean, cmap="hot", alpha=0.45)
-        ax.set_title(f"True state: {result['payload']['index']}")
+        ax.set_title(f"True state: {payload['index']}")
         ax.axis("off")
         st.pyplot(fig)
         plt.close(fig)
 
     if posterior is None:
-        st.info(
-            "No estimator.pt and training_parameters.json found for this model directory. "
-            "Image generation works, but posterior inference is disabled."
-        )
+        st.info("No estimator found. Inference disabled.")
         return
     
-    control_col1, control_col2 = st.columns([1, 1])
-    with control_col1:
-        st.button("Resample training reference", on_click=_request_reference_resample)
-    with control_col2:
-        run_inference = st.button(
-            "Compute posterior for current preview",
-            type="primary",
-            disabled=posterior is None,
-        )
-
-    if run_inference:
-        with st.spinner("Sampling posterior for currently displayed images..."):
-            ref_theta_samples, ref_preds, ref_summary = infer_single_observation(
+    # --- Auto-run Inference ---
+    current_signature = _payload_signature(payload)
+    need_inference = (
+        result_key not in st.session_state 
+        or st.session_state[result_key].get("payload_signature") != current_signature
+        or need_new_ref_params
+    )
+    
+    if need_inference:
+        with st.spinner("Sampling posterior..."):
+            ref_theta_samples, _, ref_summary = infer_single_observation(
                 posterior,
-                preview["ref_noisy"],
-                payload["posterior_samples"],
-                preview["ref_true_index"],
+                ref_noisy,
+                2000,
+                ref_p["index"],
                 num_models,
             )
-            exp_theta_samples, exp_preds, exp_summary = infer_single_observation(
+            exp_theta_samples, _, exp_summary = infer_single_observation(
                 posterior,
-                preview["exp_noisy"],
-                payload["posterior_samples"],
+                exp_noisy,
+                2000,
                 payload["index"],
                 num_models,
             )
 
             st.session_state[result_key] = {
-                **preview,
+                "payload_signature": current_signature,
                 "ref_theta_samples": ref_theta_samples,
-                "ref_preds": ref_preds,
                 "ref_summary": ref_summary,
                 "exp_theta_samples": exp_theta_samples,
-                "exp_preds": exp_preds,
                 "exp_summary": exp_summary,
+                "ref_true_index": ref_p["index"],
             }
 
-    if result_key not in st.session_state:
-        st.info(
-            "Adjust controls and inspect the images first, then click 'Compute posterior for current preview'."
-        )
-        return
+    inference_res = st.session_state[result_key]
+    ref_theta_samples = inference_res["ref_theta_samples"]
+    ref_summary = inference_res["ref_summary"]
+    exp_theta_samples = inference_res["exp_theta_samples"]
+    exp_summary = inference_res["exp_summary"]
 
-    result = st.session_state[result_key]
-    if result.get("payload_signature") != current_signature:
-        st.warning(
-            "Posterior plots are from a previous preview. Click 'Compute posterior for current preview' to refresh."
-        )
+    # --- Posterior Visualization ---
+    _, center_col, _ = st.columns([1, 8, 1])
+    with center_col:
+        fig, ax = plt.subplots(figsize=(10, 5))
 
-    ref_theta_samples = result["ref_theta_samples"]
-    ref_preds = result["ref_preds"]
-    ref_summary = result["ref_summary"]
-    exp_theta_samples = result["exp_theta_samples"]
-    exp_preds = result["exp_preds"]
-    exp_summary = result["exp_summary"]
-
-    st.subheader("Posterior comparison: reference vs experiment")
-
-    mcol1, mcol2 = st.columns(2, border=True)
-    with mcol1:
-        st.markdown("Reference sample metrics")
-        st.markdown(f"True state: **{result['ref_true_index']}**")
-        st.markdown(f"Posterior mean: **{ref_summary['posterior_mean']:.3f}**")
-        st.markdown(f"Posterior std: **{ref_summary['posterior_std']:.3f}**")
-        st.markdown(
-            f"P(rounded=true): **{ref_summary['rounded_true_state_prob_percent']:.1f}%**"
-        )
-        st.markdown(
-            "Top class: "
-            f"**{ref_summary['top_predicted_state']} "
-            f"({ref_summary['top_predicted_state_prob_percent']:.1f}%)**"
-        )
-    with mcol2:
-        st.markdown("Experiment sample metrics")
-        st.markdown(f"True state: **{result['payload']['index']}**")
-        st.markdown(f"Posterior mean: **{exp_summary['posterior_mean']:.3f}**")
-        st.markdown(f"Posterior std: **{exp_summary['posterior_std']:.3f}**")
-        st.markdown(
-            f"P(rounded=true): **{exp_summary['rounded_true_state_prob_percent']:.1f}%**"
-        )
-        st.markdown(
-            "Top class: "
-            f"**{exp_summary['top_predicted_state']} "
-            f"({exp_summary['top_predicted_state_prob_percent']:.1f}%)**"
-        )
-
-    plot_col1, plot_col2 = st.columns([2, 1])
-
-    with plot_col1:
-        fig, ax = plt.subplots(figsize=(8, 3))
         sns.kdeplot(
             ref_theta_samples,
             ax=ax,
             fill=True,
             color="#1f77b4",
-            label=f"Reference (true={result['ref_true_index']})",
+            label=f"Reference Posterior (Model {inference_res['ref_true_index']})",
             warn_singular=False,
         )
         sns.kdeplot(
@@ -623,10 +566,17 @@ def render_ui():
             ax=ax,
             fill=True,
             color="#ff7f0e",
-            label=f"Experiment (true={result['payload']['index']})",
+            label=f"Experiment Posterior (Model {payload['index']})",
             warn_singular=False,
         )
-        ax.set_title("Continuous posterior over conformation index")
+        
+        target_idx = payload["index"]
+        ax.axvspan(target_idx - 0.5, target_idx + 0.5, color="#2ca02c", alpha=0.1, label="Ideal Range (Uniform)")
+
+        ax.errorbar(ref_summary["posterior_mean"], 0.1, xerr=ref_summary["posterior_std"], fmt='|', color="#1f77b4", capsize=3, elinewidth=2, markeredgewidth=2, label="Reference Mean ± Std")
+        ax.errorbar(exp_summary["posterior_mean"], 0.1, xerr=exp_summary["posterior_std"], fmt='|', color="#ff7f0e", capsize=3, elinewidth=2, markeredgewidth=2, label="Experiment Mean ± Std")
+
+        ax.set_title("Continuous Posterior Density Comparison")
         ax.set_xlim(-0.5, num_models - 0.5)
 
         ticks = []
@@ -634,56 +584,42 @@ def render_ui():
         for idx in range(num_models):
             boundary = idx - 0.5
             ticks.append(boundary)
-            labels.append(f"{boundary:.1f}")
+            labels.append("")
             ticks.append(idx)
             labels.append(f"Model {idx}")
-            ax.axvline(boundary, color="gray", linestyle="--", alpha=0.4)
+            ax.axvline(boundary, color="gray", linestyle="--", alpha=0.3)
 
-        ax.axvline(num_models - 0.5, color="gray", linestyle="--", alpha=0.4)
+        ax.axvline(num_models - 0.5, color="gray", linestyle="--", alpha=0.3)
         ticks.append(num_models - 0.5)
-        labels.append(f"{num_models - 0.5:.1f}")
+        labels.append("")
 
         ax.set_xticks(ticks)
-        ax.set_xticklabels(labels, rotation=45 if num_models > 4 else 0)
-        ax.axvline(result["ref_true_index"], color="#1f77b4", linestyle="-", alpha=0.8)
-        ax.axvline(result["payload"]["index"], color="#ff7f0e", linestyle="-", alpha=0.8)
-        if num_models <= 10:
-            ax.legend(loc="upper right", prop={"size": 8})
+        ax.set_xticklabels(labels)
+        ax.legend(loc="upper right", prop={"size": 8})
         ax.set_ylabel("Density")
         st.pyplot(fig)
         plt.close(fig)
 
-    with plot_col2:
-        fig, ax = plt.subplots(figsize=(4, 3))
-        bins = np.arange(-0.5, num_models + 0.5, 1)
-        ref_weights = np.ones_like(ref_preds) / max(1, len(ref_preds)) * 100.0
-        exp_weights = np.ones_like(exp_preds) / max(1, len(exp_preds)) * 100.0
-        ax.hist(
-            [ref_preds, exp_preds],
-            bins=bins,
-            weights=[ref_weights, exp_weights],
-            color=["#1f77b4", "#ff7f0e"],
-            label=["Reference", "Experiment"],
-            align="mid",
-        )
-        ax.set_title("Discrete predictions")
-        ax.set_ylabel("Percentage (%)")
-        ax.set_xticks(range(num_models))
-        ax.set_xticklabels([str(i) for i in range(num_models)])
-        ax.set_xlim(-0.5, num_models - 0.5)
-        if num_models <= 10:
-            ax.legend(loc="upper right", prop={"size": 8})
-        st.pyplot(fig)
-        plt.close(fig)
+    with st.expander("📖 How to read the Posterior"):
+        st.markdown(r"""
+            **Continuous Posterior Density (KDE):** This plot shows the continuous probability distribution over the model index. Since our method learns an approximate neural posterior $q(\theta | x)$,
+            we can draw many samples from this posterior (typically around 2000). From these samples, we estimate a smooth posterior density using Kernel Density Estimation (KDE).
+            
+            - **Ideal Range Highlight:** A perfectly calibrated model should produce a **uniform distribution** 
+              filling the entire parameter space where $\theta$ is rounded to the correct model index, here represented by the shaded box.
+            - **Estimator Mean ± Std:** The vertical marker and error bars represent the model's quantitative estimate.
+        """)
+        
+    with st.expander("🧪 Interesting things to try"):
+        st.markdown(r"""
+            There’s a lot of sliders to handle! To guide your exploration, we’ve included several presets:
 
-    with st.expander("How to interpret these posterior plots", expanded=False):
-        st.markdown(
-            "- KDE plot (left): each curve is the continuous posterior over conformation index.\\n"
-            "- Vertical solid lines: the true conformation index used for each sample.\\n"
-            "- Good adaptation: the experiment (orange) curve peaks near its true-state line and resembles the reference (blue) sharpness.\\n"
-            "- Domain shift signs: experiment curve broadens, shifts away from the true line, or becomes multi-modal compared with the reference.\\n"
-            "- Histogram (right): rounded class probabilities in percent; compare how much mass remains on the true class for reference vs experiment."
-        )
+            - **Default:** Here, the experimental values (right) are the same as the ones the model was trained on (left). The two posteriors should match up quite well. Try increasing the SNR (reducing noise); you'll see the posterior converge more tightly on the correct bin. Interestingly, even with zero noise, the model still struggles to differentiate between late-stage conformations—proving that some ambiguity is inherent!
+            
+            - **Clean:** What happens if we remove the effect of the microscope entirely? By decreasing CTF effects and noise, we get projections that are almost human-readable. You might expect this to help the model, but remember: the model was never trained on 'clean' images. While it still works for the standing cat, it often becomes **confidently wrong** for lying-down poses—predicting an incorrect model with extremely high confidence.
+            
+            - **High Noise / High Defocus:** Here we stress the model by making the image quality worse. Performance drops as expected, but interestingly, the model is also far less confident (the posterior broadens). It’s often better to have a model that knows it's uncertain than one that is confidently incorrect!
+        """)
 
 
 if __name__ == "__main__":

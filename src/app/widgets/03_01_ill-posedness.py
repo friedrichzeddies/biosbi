@@ -121,14 +121,19 @@ def render_ui():
     with ctrl4:
         rot_z = st.slider("Rot Z °", 0, 360, 0, key="z")
         
-    # 2. Dynamic Images Row (Only First and Last)
-    indices_to_show = [0, num_models - 1] if num_models > 1 else [0]
-    cols = st.columns(len(indices_to_show))
+    # 2. Dynamic Images Row (Choose Models for Slot A and Slot B)
+    indices_to_show = []
     images_noisy_list = []
+    slot_labels = ["A", "B"]
+    cols = st.columns(len(slot_labels))
     
-    for c_idx, col in zip(indices_to_show, cols):
+    for i, (col, label) in enumerate(zip(cols, slot_labels)):
         with col:
-            st.write(f"**Conformation {c_idx}**")
+            default_val = 0 if i == 0 else (num_models - 1 if num_models > 1 else 0)
+            c_idx = st.slider(f"Select Model for Slot {label}", 0, num_models - 1, default_val, key=f"idx_{label}")
+            indices_to_show.append(c_idx)
+            
+            st.write(f"**Slot {label}: Model {c_idx}**")
             n_img, c_img = generate_image_for_model(simulator, c_idx, rot_x, rot_y, rot_z)
             images_noisy_list.append(n_img)
             
@@ -140,6 +145,7 @@ def render_ui():
                 ax.imshow(masked_clean, cmap='hot', alpha=0.5)
             ax.axis('off')
             st.pyplot(fig)
+            plt.close(fig)
             
     st.divider()
     
@@ -168,76 +174,101 @@ def render_ui():
             else:
                 s = samples[i, :, 0] if samples.shape[0] == num_inferences else samples[:, i, 0]
             model_samples.append(s.detach().numpy())
+        
+        # Calculate Posterior Statistics
+        preds_list = [np.round(s).astype(int).clip(0, num_models - 1) for s in model_samples]
+        
+        stats = []
+        for i in range(num_inferences):
+            s = model_samples[i]
+            p = preds_list[i]
+            # Mode (Top Index)
+            counts = np.bincount(p, minlength=num_models)
+            top_idx = int(np.argmax(counts))
+            # Mean and Std
+            mean_val = float(np.mean(s))
+            std_val = float(np.std(s))
+            stats.append({"top": top_idx, "mean": mean_val, "std": std_val})
             
-    # Visual Layout
-    plot_col1, plot_col2 = st.columns([2, 1])
+    # Visual Layout - Centered Posterior Plot
+    _, center_col, _ = st.columns([1, 8, 1])
     
-    with plot_col1:
-        fig1, ax1 = plt.subplots(figsize=(8, 3))
+    with center_col:
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
         
         # Iterate dynamic KDEs matching each evaluated base
         colors = plt.cm.tab10.colors
         for i, c_idx in enumerate(indices_to_show):
             c = colors[c_idx % len(colors)]
-            sns.kdeplot(model_samples[i], ax=ax1, fill=True, color=c, label=f"Inferred from Conf {c_idx}", warn_singular=False)
+            label = slot_labels[i]
+            sns.kdeplot(model_samples[i], ax=ax1, fill=True, color=c, label=f"Slot {label} Posterior (True Model {c_idx})", warn_singular=False)
             
-        ax1.set_title("Continuous Posterior Density (with De-Quantization Boundaries)")
+            # Highlight target bin
+            ax1.axvspan(c_idx - 0.5, c_idx + 0.5, color=c, alpha=0.1, label=f"Slot {label} Ideal Range")
+
+            # Add mean and std error bars at y=0.1
+            mean_val = stats[i]["mean"]
+            std_val = stats[i]["std"]
+            ax1.errorbar(mean_val, 0.1, xerr=std_val, fmt='|', color=c, capsize=3, elinewidth=2, markeredgewidth=2, label=f"Slot {label} Estimator Mean ± Std")
+            
+        ax1.set_title("Continuous Posterior Density")
         ax1.set_xlim(-0.5, num_models - 0.5)
         
         # Dynamically build ticks at both the integer centers and fractional boundaries
         ticks = []
         labels = []
         for i in range(num_models):
-            # Left boundary
+            # Left boundary (tick but no label)
             ticks.append(i - 0.5)
-            labels.append(f"{i - 0.5}")
+            labels.append("")
             
-            # Center integer
+            # Center integer (model identifier)
             ticks.append(i)
             labels.append(f"Model {i}")
             
             # Visual vertical boundary line
             ax1.axvline(i - 0.5, color='gray', linestyle='--', alpha=0.5)
             
-        # Final explicit right boundary
+        # Final explicit right boundary (tick but no label)
         ticks.append(num_models - 0.5)
-        labels.append(f"{num_models - 0.5}")
+        labels.append("")
         ax1.axvline(num_models - 0.5, color='gray', linestyle='--', alpha=0.5)
         
         ax1.set_xticks(ticks)
         ax1.set_xticklabels(labels, rotation=45 if num_models > 4 else 0)
         if num_models <= 10:
             ax1.legend(loc="upper right", prop={'size': 8})
-        ax1.set_ylabel("Continuous Density")
         st.pyplot(fig1)
+        plt.close(fig1)
 
-    with plot_col2:
-        fig2, ax2 = plt.subplots(figsize=(4, 3))
+    # 4. Explanatory Expanders
+    with st.expander("📖 How to read the Posterior"):
+        st.markdown(r"""
+            **Continuous Posterior Density (KDE):** This plot shows the continuous probability distribution over the model index. Since our method learns an approximate neural posterior $q(\theta | x)$,
+            we can draw many samples from this posterior (typically around 2000). From these samples, we estimate a smooth posterior density using Kernel Density Estimation (KDE): conceptually, KDE places many small bell curves (otherwise known as _Gaussian kernels_) at the sampled values and adds them up, such that we receive a smooth approximation of the neural posterior estimate.
+            During training, the conformation index is sampled from a **continuous uniform distribution** over the entire range of models.
+            When generating a new training set ($\theta, x_{obs}$) you first sample from your priors and get $\theta = 0.4434$. For the generation of the final image ths is then rounded to Model 0 before performing the simulation pass.
+            
+            - **Ideal Range Highlight:** Due to this training scheme, a perfectly calibrated model should produce a **uniform distribution** 
+              filling the entire parameter space where it $\theta$ is rounded to the correct model index, here represented by the shaded box.
+            - **Estimator Mean ± Std:** The vertical marker and error bars represent the model's quantitative estimate.
+        """)
         
-        # Discretize predictions aggressively using mathematical snapping rounds
-        preds_list = [np.round(s).astype(int).clip(0, num_models - 1) for s in model_samples]
-        bins = np.arange(-0.5, num_models + 0.5, 1)
-        
-        # Determine explicit coloring mapping mirroring KDE
-        hist_colors = [colors[c_idx % len(colors)] for c_idx in indices_to_show]
-        weights_list = [np.ones_like(p) / len(p) * 100 for p in preds_list]
-        
-        ax2.hist(
-            preds_list, 
-            bins=bins, 
-            weights=weights_list,
-            color=hist_colors, 
-            label=[f"True {c_idx}" for c_idx in indices_to_show], 
-            align='mid'
-        )
-        ax2.set_title("Predicted Discrete State Histogram")
-        ax2.set_ylabel("Percentage (%)")
-        ax2.set_xticks(range(num_models))
-        ax2.set_xticklabels([str(i) for i in range(num_models)])
-        ax2.set_xlim(-0.5, num_models - 0.5)
-        if num_models <= 10:
-            ax2.legend(loc="upper right", prop={'size': 8})
-        st.pyplot(fig2)
+    with st.expander("🧪 Interesting things to try"):
+        st.markdown("""
+            Here are some key insights to explore in this widget:
+            
+            1. **Conformational Confidence Shifts:** Compare 'early stage' (low index) vs 'late stage' (high index) transformations. 
+               You may notice the model is more certain for early changes. As the conformational differences become more subtle 
+               (look at the 3D cats above), the model 'admits' its uncertainty by producing broader, flatter distributions.
+            
+            2. **The "Angle" of Ambiguity:** Try rotating the models so they are viewed from the top or bottom. 
+               When features like the feet and tail become less visible, even models trained on vast datasets struggle to 
+               distinguish between similar conformations. We often, depending on the noise, get very ambigous results for rotations of (0°,180°,~310°).
+            
+            3. **Learning from Noise:** Despite the images often looking like pure static to our eyes due to high noise and 
+               CTF effects, the model still extracts structural features that allow it to perform inference. We think that's pretty amazing
+        """)
 
 if __name__ == "__main__":
     st.set_page_config(page_title="Ill-Posedness Conformations", layout="wide")
