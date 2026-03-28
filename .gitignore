@@ -8,7 +8,6 @@ tests/test_simulator.ipynb
 #SBI related folders
 sbi-logs/
 *.pdf
-*.png
 
 # Training data, models and other datafiles
 results/
