@@ -2,7 +2,7 @@ At this stage, it is worth sanity-checking your intuition: why can a sharper-loo
 
 You now have the right expectation: a single cryo image is noisy and transfer-modulated by design, not by accident. Next we close Chapter 2 by connecting all this to SPA workflow, sample preparation, and conformational heterogeneity.
 
-## SPA, Sample Prep, and Heterogeneity: Turning Messy 2D Data into 3D Structure
+### SPA, Sample Prep, and Heterogeneity: Turning Messy 2D Data into 3D Structure
 
 Now we connect everything from this chapter so far. We have noisy projections, transfer-function distortions, and only slice-wise access to a 3D object in reciprocal space, so the natural question is: how can this ever become a trustworthy 3D reconstruction? SPA is the practical answer, and it works exactly because we do not rely on one perfect image.
 
@@ -16,6 +16,6 @@ This is also why sample preparation is not a side topic for biochemists only. Bi
 
 Then comes the twist that makes biology interesting and analysis difficult: molecules are not rigid statues. As mentioned, they occupy multiple _conformations_, and if those states are mixed during averaging, important structural differences get blurred away. In practice, sorting by orientation is often not enough; we also need to account for conformational heterogeneity.
 
-## Motivation for Part 2
+### Motivation for Part 2
 
 We will hand over to the SBI part of the module with one simple question: Can we make this incredibly difficult, but well understood process easier, and learn to predict a conformation from a newly gathered image by relying on already seen ones?

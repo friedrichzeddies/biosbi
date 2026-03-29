@@ -1,4 +1,4 @@
-## What do you need in order to _understand_ Cryo-EM?
+### What do you need in order to _understand_ Cryo-EM?
 
 ### Chapter 2 lesson sequence (implemented)
 

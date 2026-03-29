@@ -3,13 +3,16 @@
 SBI is not tied to a single posterior-estimator architecture; several families are possible. However, many classical posterior methods either require an explicit likelihood or are computationally very expensive, and in the worst case both. A strong practical option is **Normalizing Flows** (NFs), which are flexible density estimators and therefore a natural focus for this project.
 
 ### Interlude: Normalizing Flows
+
 Rather than directly trying to model a complicated distribution over parameters, NFs take a more indirect, yet very powerful route.
 The core idea can be summarized as follows:
+
 > Start from a simple distribution (e.g. a Gaussian) and transform it step by step into a complex one.
 
 Each step of the process should be fast to compute and invertible. Because each transformation is invertible, we can keep track of how probability mass changes under these transformations. This is crucial: it allows us to evaluate the resulting density $q(\theta)$ exactly, rather than just sampling from it.
- 
+
 The true posterior $p(\theta \mid x)$ can have a very complicated shape:
+
 - it may be multi-modal (several plausible solutions),
 - skewed,
 - or have strong correlations between parameters.
@@ -23,14 +26,16 @@ q(\theta \mid x) = f(z; x).
 $$
 
 This means:
+
 - the transformation itself depends on the input image x,
 - different observations lead to different posterior shapes.
 
 Intuitively, the model learns:
 
-*“Given this image, how do I need to warp a simple Gaussian to represent all plausible parameters?”*
+_“Given this image, how do I need to warp a simple Gaussian to represent all plausible parameters?”_
 
 **What to take away from the last section:**
+
 - SBI reduces inference to learning a mapping from observations (e.g. projection images of cats) to distributions over explanatory parameters (e.g. conformations of said cat).
 - Normalizing Flows provide a powerful way to represent these distributions and to explicitly evaluate their probability density.
 - The combination allows us to approximate posteriors that would otherwise be intractable.

@@ -1,6 +1,6 @@
 Next we return to optics and transfer effects, because orientation coverage is only one part of the real imaging bottleneck.
 
-## Lenses, PSF, and CTF: When Optics Becomes a Model
+### Lenses, PSF, and CTF: When Optics Becomes a Model
 
 If Fourier space is our practical language, we now need a physical model that tells us what the microscope actually does in that language. This is where we introduce lenses[^1], and transfer functions.
 

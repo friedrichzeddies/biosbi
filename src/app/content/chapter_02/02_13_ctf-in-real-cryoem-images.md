@@ -1,4 +1,4 @@
-# CTF in Real Cryo-EM Images: Why Raw Data Looks So Unforgiving
+### CTF in Real Cryo-EM Images: Why Raw Data Looks So Unforgiving
 
 From the previous section we carry one crucial relation forward,
 
