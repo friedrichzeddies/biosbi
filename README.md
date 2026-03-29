@@ -9,9 +9,17 @@ This project combines interactive visual explanations with runnable simulations 
 ## Requirements
 
 - Python 3.12 or newer
-- uv
+- uv (brew install)
 
 ## Setup
+
+Clone the repository:
+
+```
+git clone git@github.com:friedrichzeddies/biosbi.git
+```
+
+Locally install the required packages.
 
 ```bash
 uv sync
