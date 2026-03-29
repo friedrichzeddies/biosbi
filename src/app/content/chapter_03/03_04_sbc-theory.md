@@ -40,7 +40,7 @@ How do we make this idea quantitative?
 
 The simplest way is to compare $\theta^*$ to samples from the estimated posterior. Concretely, we draw many samples $\theta$ from $q(\theta \mid x_{\text{sim}})$ and ask:
 
-> _How many of these samples are smaller than $\theta^_$?\*
+> _How many of these samples are smaller than $\theta^*$_?
 
 This number is called the **rank** of $\theta^*$. If $\theta^*$ truly behaves like a typical sample from the posterior, then its rank should also behave like that of any other sample.
 

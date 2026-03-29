@@ -244,10 +244,10 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
 
         with right:
             st.markdown("### ResNet summary")
-            st.write(f"Embedding dimension: {summary_np.shape[0]}")
+            st.caption(f"Embedding dimension: {summary_np.shape[0]}")
             summary_img = _embedding_to_image(summary)
             summary_img_np = summary_img.detach().cpu().numpy()
-            st.write(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
+            
             fig_sum, ax_sum = plt.subplots(figsize=(5, 4))
             im = ax_sum.imshow(
                 summary_img_np,
@@ -267,6 +267,7 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
             st.pyplot(fig_sum)
             plt.close(fig_sum)
             
+            st.caption(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
             if summary_np.shape[0] == 128:
                 st.caption(
                     "Note: This 128-d embedding is shown as an 8x16 grid for readability only. "

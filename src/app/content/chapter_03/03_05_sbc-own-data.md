@@ -17,5 +17,3 @@ By repeating these 4 steps $N$ times, we can build the histogram/ECDF plots from
 Using the methods just covered, we can explore how our pre-trained models perform:
 
 Let's see this in action in the next interactive widget:
-
-<!-- TODO(widget): Display SBI own-data widget here. -->
