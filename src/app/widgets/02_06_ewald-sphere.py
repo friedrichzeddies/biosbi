@@ -46,30 +46,34 @@ def _ewald_match_mask(spots: np.ndarray, k: float, tolerance: float) -> np.ndarr
     return np.abs(dist - k) <= tolerance
 
 
-def _ewald_lower_branch(k: float, x_vals: np.ndarray) -> np.ndarray:
+def _ewald_branches(k: float, x_vals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     inside = np.abs(x_vals) <= k
-    y_vals = np.full_like(x_vals, np.nan, dtype=float)
-    y_vals[inside] = k - np.sqrt(np.maximum(k**2 - x_vals[inside] ** 2, 0.0))
-    return y_vals
+    y_lower = np.full_like(x_vals, np.nan, dtype=float)
+    y_upper = np.full_like(x_vals, np.nan, dtype=float)
+    radial = np.sqrt(np.maximum(k**2 - x_vals[inside] ** 2, 0.0))
+    y_lower[inside] = k - radial
+    y_upper[inside] = k + radial
+    return y_lower, y_upper
 
 
 def _plot_spot_interaction(spots: np.ndarray, k_electron: float, k_xray: float, tolerance: float, xlim: float) -> tuple:
     x_vals = np.linspace(-xlim, xlim, 500)
 
-    y_e = _ewald_lower_branch(k_electron, x_vals)
-    y_x = _ewald_lower_branch(k_xray, x_vals)
+    y_e, _ = _ewald_branches(k_electron, x_vals)
+    y_x_lower, y_x_upper = _ewald_branches(k_xray, x_vals)
 
     mask_e = _ewald_match_mask(spots, k_electron, tolerance)
     mask_x = _ewald_match_mask(spots, k_xray, tolerance)
 
     fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.5), sharex=True, sharey=True)
 
-    for ax, title, curve, mask, k_val in zip(axes, 
-                                             [f"Electron (k={k_electron:.2f} Å⁻¹)", 
-                                              f"X-ray λ=1.0 Å (k={k_xray:.2f} Å⁻¹)"],
-                                             [y_e, y_x], 
-                                             [mask_e, mask_x],
-                                             [k_electron, k_xray]):
+    for ax, title, curve, mask, upper_curve in zip(
+        axes,
+        [f"Electron (k={k_electron:.2f} Å⁻¹)", f"X-ray λ=1.0 Å (k={k_xray:.2f} Å⁻¹)"],
+        [y_e, y_x_lower],
+        [mask_e, mask_x],
+        [None, y_x_upper],
+    ):
         ax.scatter(spots[:, 0], spots[:, 1], s=12, color="#b0b0b0", alpha=0.6)
         if np.any(mask):
             ax.scatter(
@@ -81,7 +85,9 @@ def _plot_spot_interaction(spots: np.ndarray, k_electron: float, k_xray: float, 
                 linewidths=0.3,
                 zorder=5,
             )
-        ax.plot(x_vals, curve, color="#1f77b4", linewidth=2.4, label="Ewald curve")
+        ax.plot(x_vals, curve, color="#1f77b4", linewidth=2.4, alpha=0.6, label="Ewald curve")
+        if upper_curve is not None:
+            ax.plot(x_vals, upper_curve, color="#1f77b4", linewidth=1.8, alpha=0.45, linestyle="--")
         ax.axhline(0.0, color="#2ca02c", linestyle=":", linewidth=1.5, alpha=0.6)
         ax.set_title(title, fontsize=11, fontweight="bold")
         ax.set_xlabel("kx (Å⁻¹)", fontsize=10)

@@ -125,7 +125,7 @@ def _seed_from_values(values):
 def render(instance_id: str = "main"):
     st.subheader("Full Cryo-EM Cat Simulation")
     st.write(
-        "Control the full image-formation chain: projection, CTF filtering, noise, and normalization."
+        "Control the full image-formation chain: projection, CTF filtering, with a focus on now newly introduced noise."
     )
 
     try:
@@ -141,14 +141,20 @@ def render(instance_id: str = "main"):
     sigma_min, sigma_max = _as_range(simulator._config.get("SIGMA", [0.5, 5.0]), 0.5, 5.0)
     defocus_min, defocus_max = _as_range(simulator._config.get("DEFOCUS", [0.5, 2.0]), 0.5, 2.0)
     b_factor_min, b_factor_max = _as_range(simulator._config.get("B_FACTOR", [1.0, 100.0]), 1.0, 100.0)
-    snr_linear_min, snr_linear_max = _as_range(simulator._config.get("SNR", [0.001, 0.5]), 0.001, 0.5)
+    snr_linear_min, snr_linear_max = _as_range(simulator._config.get("SNR", [0.001, 1.0]), 0.001, 1.0)
     amp_value = float(np.clip(_as_scalar(simulator._config.get("AMP", 0.1), 0.1), 1e-6, 0.99))
     shift_limit = float(abs(_as_scalar(simulator._config.get("SHIFT", 0.0), 0.0)))
 
     sigma_min, sigma_max = _ensure_reasonable_range(sigma_min, sigma_max, 0.5, 5.0, min_span=0.05)
     defocus_min, defocus_max = _ensure_reasonable_range(defocus_min, defocus_max, 0.5, 2.0, min_span=0.05)
     b_factor_min, b_factor_max = _ensure_reasonable_range(b_factor_min, b_factor_max, 1.0, 100.0, min_span=0.5)
-    snr_linear_min, snr_linear_max = _ensure_reasonable_range(snr_linear_min, snr_linear_max, 0.001, 0.5, min_span=1e-4)
+    snr_linear_min, snr_linear_max = _ensure_reasonable_range(
+        snr_linear_min,
+        snr_linear_max,
+        0.001,
+        1.0,
+        min_span=1e-4,
+    )
     snr_linear_min = max(float(snr_linear_min), 1e-6)
     snr_linear_max = max(float(snr_linear_max), snr_linear_min + 1e-6)
 
@@ -163,65 +169,13 @@ def render(instance_id: str = "main"):
         else:
             model_idx = st.slider("Conformation Index", 0, model_count - 1, 0, key=_k("model"))
 
-        rx = st.slider("Rotation X (deg)", -180, 180, 0, key=_k("rx"))
-        ry = st.slider("Rotation Y (deg)", -180, 180, 90, key=_k("ry"))
-        rz = st.slider("Rotation Z (deg)", -180, 180, 90, key=_k("rz"))
-
-        if shift_limit > 0.0:
-            shift_step = max(shift_limit / 100.0, 0.1)
-            shift_x = st.slider(
-                "Shift X (px)",
-                -shift_limit,
-                shift_limit,
-                0.0,
-                step=shift_step,
-                key=_k("shift_x"),
-            )
-            shift_y = st.slider(
-                "Shift Y (px)",
-                -shift_limit,
-                shift_limit,
-                0.0,
-                step=shift_step,
-                key=_k("shift_y"),
-            )
-        else:
-            shift_x = 0.0
-            shift_y = 0.0
-
-        shift = torch.tensor([[float(shift_x), float(shift_y)]], dtype=torch.float32)
-        amp = torch.tensor([[amp_value]], dtype=torch.float32)
-
         sigma_default = float(np.clip(1.0, sigma_min, sigma_max))
         defocus_default = float(np.clip(1.0, defocus_min, defocus_max))
         b_factor_default = float(np.clip(10.0, b_factor_min, b_factor_max))
         snr_default = float(np.clip(0.1, snr_linear_min, snr_linear_max))
 
-        sigma_val = _slider_with_safe_range(
-            "Sigma",
-            sigma_min,
-            sigma_max,
-            sigma_default,
-            step=_slider_step(sigma_min, sigma_max, base_steps=250, min_step=0.01),
-            key=_k("sigma"),
-        )
-        defocus_val = _slider_with_safe_range(
-            "Defocus",
-            defocus_min,
-            defocus_max,
-            defocus_default,
-            # Defocus is linear in this simulator; avoid ultra-fine step sizes that make the UI feel broken.
-            step=_slider_step(defocus_min, defocus_max, base_steps=150, min_step=0.01),
-            key=_k("defocus"),
-        )
-        b_factor_val = _slider_with_safe_range(
-            "B-factor",
-            b_factor_min,
-            b_factor_max,
-            b_factor_default,
-            step=_slider_step(b_factor_min, b_factor_max, base_steps=200, min_step=0.1),
-            key=_k("b_factor"),
-        )
+        st.markdown("#### Noise")
+        st.caption("Primary control: use SNR to explore how noise strength changes reconstruction quality.")
         snr_linear_val = _slider_with_safe_range(
             "SNR (linear)",
             snr_linear_min,
@@ -230,6 +184,63 @@ def render(instance_id: str = "main"):
             step=_slider_step(snr_linear_min, snr_linear_max, base_steps=250, min_step=1e-4),
             key=_k("snr_linear"),
         )
+
+        with st.expander("Rotation and Shift", expanded=False):
+            rx = st.slider("Rotation X (deg)", -180, 180, 0, key=_k("rx"))
+            ry = st.slider("Rotation Y (deg)", -180, 180, 90, key=_k("ry"))
+            rz = st.slider("Rotation Z (deg)", -180, 180, 90, key=_k("rz"))
+
+            if shift_limit > 0.0:
+                shift_step = max(shift_limit / 100.0, 0.1)
+                shift_x = st.slider(
+                    "Shift X (px)",
+                    -shift_limit,
+                    shift_limit,
+                    0.0,
+                    step=shift_step,
+                    key=_k("shift_x"),
+                )
+                shift_y = st.slider(
+                    "Shift Y (px)",
+                    -shift_limit,
+                    shift_limit,
+                    0.0,
+                    step=shift_step,
+                    key=_k("shift_y"),
+                )
+            else:
+                shift_x = 0.0
+                shift_y = 0.0
+
+        with st.expander("CTF and Optics", expanded=False):
+            sigma_val = _slider_with_safe_range(
+                "Sigma",
+                sigma_min,
+                sigma_max,
+                sigma_default,
+                step=_slider_step(sigma_min, sigma_max, base_steps=250, min_step=0.01),
+                key=_k("sigma"),
+            )
+            defocus_val = _slider_with_safe_range(
+                "Defocus",
+                defocus_min,
+                defocus_max,
+                defocus_default,
+                # Defocus is linear in this simulator; avoid ultra-fine step sizes that make the UI feel broken.
+                step=_slider_step(defocus_min, defocus_max, base_steps=150, min_step=0.01),
+                key=_k("defocus"),
+            )
+            b_factor_val = _slider_with_safe_range(
+                "B-factor",
+                b_factor_min,
+                b_factor_max,
+                b_factor_default,
+                step=_slider_step(b_factor_min, b_factor_max, base_steps=200, min_step=0.1),
+                key=_k("b_factor"),
+            )
+
+        shift = torch.tensor([[float(shift_x), float(shift_y)]], dtype=torch.float32)
+        amp = torch.tensor([[amp_value]], dtype=torch.float32)
 
         index = torch.tensor([[float(model_idx)]], dtype=torch.float32)
         quaternion = _quat_wxyz_from_euler(rx, ry, rz)
@@ -241,7 +252,19 @@ def render(instance_id: str = "main"):
 
         # Keep noise stable for the same parameter set; noise only changes when inputs change.
         noise_seed = _seed_from_values(
-            [instance_id, model_idx, rx, ry, rz, sigma_val, defocus_val, b_factor_val, snr_linear_val]
+            [
+                instance_id,
+                model_idx,
+                rx,
+                ry,
+                rz,
+                shift_x,
+                shift_y,
+                sigma_val,
+                defocus_val,
+                b_factor_val,
+                snr_linear_val,
+            ]
         )
         rng_state = torch.get_rng_state()
         torch.manual_seed(noise_seed)
@@ -278,7 +301,7 @@ def render(instance_id: str = "main"):
 
         fig3, ax3 = plt.subplots(figsize=(4, 4))
         ax3.imshow(final_np, cmap="gray", vmin=lo_final, vmax=hi_final)
-        ax3.set_title("Projection + CTF + Noise + Normalization")
+        ax3.set_title("Projection + CTF + Noise")
         ax3.axis("off")
         st.pyplot(fig3, clear_figure=True)
         plt.close(fig3)

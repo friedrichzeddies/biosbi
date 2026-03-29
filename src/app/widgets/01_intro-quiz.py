@@ -18,6 +18,45 @@ def load_simulator():
     simulator = CryoEmSimulator(sim_json, device="cpu")
     return simulator
 
+
+def to_rgb(img_tensor):
+    """Robustly normalize and convert a single-channel tensor image to RGB."""
+    img_arr = img_tensor.squeeze().detach().cpu().numpy()
+    vmin = np.percentile(img_arr, 1)
+    vmax = np.percentile(img_arr, 99)
+    clipped = np.clip(img_arr, vmin, vmax)
+    if vmax > vmin:
+        normalized = (clipped - vmin) / (vmax - vmin)
+    else:
+        normalized = np.zeros_like(clipped)
+    return np.stack((normalized,) * 3, axis=-1)
+
+
+def generate_round1_image(simulator, model_idx=0, rot_x=90, rot_y=90, rot_z=0):
+    """Use fixed parameters so round 1 remains clear and deterministic."""
+    device = simulator._models.device
+    sigma_cfg = simulator._config["SIGMA"]
+    sigma_value = float(sum(sigma_cfg) / len(sigma_cfg)) if isinstance(sigma_cfg, list) else float(sigma_cfg)
+
+    quat_tensor = torch.tensor(
+        [R.from_euler("xyz", [rot_x, rot_y, rot_z], degrees=True).as_quat()],
+        dtype=torch.float32,
+        device=device,
+    )
+    sigma_tensor = torch.tensor([[sigma_value]], dtype=torch.float32, device=device)
+    shift_tensor = torch.zeros((1, 2), dtype=torch.float32, device=device)
+
+    clean_img = project_density(
+        simulator._models[[model_idx]],
+        quat_tensor,
+        sigma_tensor,
+        shift_tensor,
+        simulator._num_pixels,
+        simulator._pixel_size,
+    )
+
+    return to_rgb(clean_img)
+
 def generate_projections(simulator, model_idx, rot_x, rot_y, rot_z):
     parameters = simulator._priors.sample((1,))
     idx_tensor = torch.tensor([[model_idx]], dtype=torch.float32)
@@ -45,23 +84,19 @@ def generate_projections(simulator, model_idx, rot_x, rot_y, rot_z):
         simulator._pixel_size
     )
     
-    # Robust normalization to prevent outlier pixels turning the image black
-    def robust_normalize(img_arr):
-        vmin = np.percentile(img_arr, 1)
-        vmax = np.percentile(img_arr, 99)
-        clipped = np.clip(img_arr, vmin, vmax)
-        if vmax > vmin:
-            return (clipped - vmin) / (vmax - vmin)
-        return np.zeros_like(clipped)
-        
-    clean_np = robust_normalize(clean_img.squeeze().detach().cpu().numpy())
-    noisy_np = robust_normalize(noisy_img.squeeze().detach().cpu().numpy())
-    
-    # Convert to RGB [0.0, 1.0] valid for st.image
-    noisy_rgb = np.stack((noisy_np,)*3, axis=-1)
-    clean_rgb = np.stack((clean_np,)*3, axis=-1)
+    noisy_rgb = to_rgb(noisy_img)
+    clean_rgb = to_rgb(clean_img)
     
     return noisy_rgb, clean_rgb
+
+
+def generate_round_images(simulator, models, rots, noisy=False):
+    """Generate one fixed image per task and keep it stable across reruns."""
+    images = []
+    for model_idx, rot in zip(models, rots):
+        noisy_img, clean_img = generate_projections(simulator, model_idx, *rot)
+        images.append(noisy_img if noisy else clean_img)
+    return images
 
 def draw_border(img_rgb, color_rgb, thickness=3):
     img = img_rgb.copy()
@@ -91,6 +126,16 @@ def render():
             margin-bottom: 10px;
             font-weight: bold;
         }
+        /* Remove Streamlit fade/transition effects for clearer captcha interaction */
+        [data-testid="stImage"] img,
+        [data-testid="stElementContainer"],
+        [data-testid="stVerticalBlock"],
+        [data-testid="stHorizontalBlock"],
+        [data-testid="stForm"] {
+            animation: none !important;
+            transition: none !important;
+            opacity: 1 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -106,21 +151,9 @@ def render():
         st.session_state.r1_flipped = False
     if "r1_choice" not in st.session_state:
         st.session_state.r1_choice = None
+    if "r1_image" not in st.session_state:
+        st.session_state.r1_image = generate_round1_image(simulator, model_idx=0, rot_x=90, rot_y=90, rot_z=0)
         
-    # Round 2
-    if "r2_models" not in st.session_state:
-        st.session_state.r2_models = [random.choice([0, 1]) for _ in range(10)]
-        st.session_state.r2_rots = [(random.uniform(0,360), random.uniform(0,360), random.uniform(0,360)) for _ in range(10)]
-        st.session_state.r2_selected = [False]*10
-        st.session_state.r2_verified = False
-        
-    # Round 3
-    if "r3_models" not in st.session_state:
-        st.session_state.r3_models = [random.choice([0, 1]) for _ in range(10)]
-        st.session_state.r3_rots = [(random.uniform(0,360), random.uniform(0,360), random.uniform(0,360)) for _ in range(10)]
-        st.session_state.r3_selected = [False]*10
-        st.session_state.r3_verified = False
-
     st.markdown('<div class="captcha-title">Before you read this article, please complete the captcha:</div>', unsafe_allow_html=True)
     
     if st.session_state.quiz_round == 1:
@@ -128,24 +161,21 @@ def render():
         st.markdown("### Round 1: Let's start easy.")
         st.write("Is it standing or lying down?")
         
-        _, clean_img = generate_projections(simulator, model_idx=0, rot_x=90, rot_y=90, rot_z=0)
-        
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.image(clean_img, use_container_width=True, caption="Clean Projection")
+            st.image(st.session_state.r1_image, use_container_width=True, caption="Clean Projection")
             
         if not st.session_state.r1_flipped:
             st.markdown("<div style='text-align: center; margin-top:20px;'>Select a card:</div>", unsafe_allow_html=True)
             bc1, bc2 = st.columns(2)
-            if bc1.button("Standing", use_container_width=True):
-                st.session_state.r1_choice = "standing"
+            choose_standing = bc1.button("Standing", use_container_width=True)
+            choose_lying = bc2.button("Lying Down", use_container_width=True)
+
+            if choose_standing or choose_lying:
+                st.session_state.r1_choice = "standing" if choose_standing else "lying"
                 st.session_state.r1_flipped = True
-                st.rerun()
-            if bc2.button("Lying Down", use_container_width=True):
-                st.session_state.r1_choice = "lying"
-                st.session_state.r1_flipped = True
-                st.rerun()
-        else:
+
+        if st.session_state.r1_flipped:
             if st.session_state.r1_choice == "standing":
                 st.success("Correct! The model is clearly standing.")
             else:
@@ -156,41 +186,50 @@ def render():
                 st.rerun()
 
     elif st.session_state.quiz_round == 2:
+        if "r2_models" not in st.session_state:
+            st.session_state.r2_models = [random.choice([0, 1]) for _ in range(10)]
+            st.session_state.r2_rots = [(random.uniform(0,360), random.uniform(0,360), random.uniform(0,360)) for _ in range(10)]
+            st.session_state.r2_selected = [False] * 10
+            st.session_state.r2_verified = False
+            st.session_state.r2_images = generate_round_images(
+                simulator, st.session_state.r2_models, st.session_state.r2_rots, noisy=False
+            )
+            for i in range(10):
+                st.session_state[f"r2_chk_{i}"] = False
+
         st.markdown('<div class="captcha-header">Select all images where the cat is STANDING</div>', unsafe_allow_html=True)
         st.markdown("### Round 2: Clean Projections")
         st.write("These are random projections of the cat either lying down or standing up.")
         
-        images = []
-        for i in range(10):
-            m = st.session_state.r2_models[i]
-            r = st.session_state.r2_rots[i]
-            _, c_img = generate_projections(simulator, m, *r)
-            images.append(c_img)
-        
-        cols = st.columns(5)
-        for i in range(10):
-            col = cols[i % 5]
-            with col:
-                img_render = images[i]
-                if st.session_state.r2_selected[i]:
-                    img_render = draw_border(img_render, [0, 0, 1.0], thickness=4)
-                if st.session_state.r2_verified:
-                    if st.session_state.r2_models[i] == 0:
-                        img_render = draw_border(img_render, [0, 1.0, 0], thickness=4)
-                        
-                st.image(img_render, use_container_width=True)
-                
-                if not st.session_state.r2_verified:
-                    selected = st.checkbox("Select", key=f"r2_chk_{i}", label_visibility="collapsed")
-                    if selected != st.session_state.r2_selected[i]:
-                        st.session_state.r2_selected[i] = selected
-                        st.rerun()
-        
+        images = st.session_state.r2_images
+
         if not st.session_state.r2_verified:
-            if st.button("Verify", use_container_width=True, type="primary"):
+            with st.form("r2_selection_form", clear_on_submit=False):
+                cols = st.columns(5)
+                for i in range(10):
+                    col = cols[i % 5]
+                    with col:
+                        st.image(images[i], use_container_width=True)
+                        st.checkbox("Select", key=f"r2_chk_{i}", label_visibility="collapsed")
+
+                submitted = st.form_submit_button("Verify", use_container_width=True, type="primary")
+
+            if submitted:
+                st.session_state.r2_selected = [st.session_state.get(f"r2_chk_{i}", False) for i in range(10)]
                 st.session_state.r2_verified = True
                 st.rerun()
         else:
+            cols = st.columns(5)
+            for i in range(10):
+                col = cols[i % 5]
+                with col:
+                    img_render = images[i]
+                    if st.session_state.r2_selected[i]:
+                        img_render = draw_border(img_render, [0, 0, 1.0], thickness=4)
+                    if st.session_state.r2_models[i] == 0:
+                        img_render = draw_border(img_render, [0, 1.0, 0], thickness=4)
+                    st.image(img_render, use_container_width=True)
+
             correct_standing = sum(1 for i in range(10) if st.session_state.r2_selected[i] and st.session_state.r2_models[i] == 0)
             incorrect_standing = sum(1 for i in range(10) if st.session_state.r2_selected[i] and st.session_state.r2_models[i] == 1)
             total_standing = sum(1 for m in st.session_state.r2_models if m == 0)
@@ -208,41 +247,50 @@ def render():
                 st.rerun()
 
     elif st.session_state.quiz_round == 3:
+        if "r3_models" not in st.session_state:
+            st.session_state.r3_models = [random.choice([0, 1]) for _ in range(10)]
+            st.session_state.r3_rots = [(random.uniform(0,360), random.uniform(0,360), random.uniform(0,360)) for _ in range(10)]
+            st.session_state.r3_selected = [False] * 10
+            st.session_state.r3_verified = False
+            st.session_state.r3_images = generate_round_images(
+                simulator, st.session_state.r3_models, st.session_state.r3_rots, noisy=True
+            )
+            for i in range(10):
+                st.session_state[f"r3_chk_{i}"] = False
+
         st.markdown('<div class="captcha-header">Select all images where the cat is STANDING</div>', unsafe_allow_html=True)
         st.markdown("### Round 3: Parameterized Projections (Cryo-EM)")
         st.write("Now using full simulation parameters with noise and CTF. This will be quite hard.")
         
-        images = []
-        for i in range(10):
-            m = st.session_state.r3_models[i]
-            r = st.session_state.r3_rots[i]
-            n_img, _ = generate_projections(simulator, m, *r)
-            images.append(n_img)
-        
-        cols = st.columns(5)
-        for i in range(10):
-            col = cols[i % 5]
-            with col:
-                img_render = images[i]
-                if st.session_state.r3_selected[i]:
-                    img_render = draw_border(img_render, [0, 0, 1.0], thickness=4)
-                if st.session_state.r3_verified:
-                    if st.session_state.r3_models[i] == 0:
-                        img_render = draw_border(img_render, [0, 1.0, 0], thickness=4)
-                        
-                st.image(img_render, use_container_width=True)
-                
-                if not st.session_state.r3_verified:
-                    selected = st.checkbox("Select", key=f"r3_chk_{i}", label_visibility="collapsed")
-                    if selected != st.session_state.r3_selected[i]:
-                        st.session_state.r3_selected[i] = selected
-                        st.rerun()
-                        
+        images = st.session_state.r3_images
+
         if not st.session_state.r3_verified:
-            if st.button("Verify Captcha", use_container_width=True, type="primary"):
+            with st.form("r3_selection_form", clear_on_submit=False):
+                cols = st.columns(5)
+                for i in range(10):
+                    col = cols[i % 5]
+                    with col:
+                        st.image(images[i], use_container_width=True)
+                        st.checkbox("Select", key=f"r3_chk_{i}", label_visibility="collapsed")
+
+                submitted = st.form_submit_button("Verify Captcha", use_container_width=True, type="primary")
+
+            if submitted:
+                st.session_state.r3_selected = [st.session_state.get(f"r3_chk_{i}", False) for i in range(10)]
                 st.session_state.r3_verified = True
                 st.rerun()
         else:
+            cols = st.columns(5)
+            for i in range(10):
+                col = cols[i % 5]
+                with col:
+                    img_render = images[i]
+                    if st.session_state.r3_selected[i]:
+                        img_render = draw_border(img_render, [0, 0, 1.0], thickness=4)
+                    if st.session_state.r3_models[i] == 0:
+                        img_render = draw_border(img_render, [0, 1.0, 0], thickness=4)
+                    st.image(img_render, use_container_width=True)
+
             correct_standing = sum(1 for i in range(10) if st.session_state.r3_selected[i] and st.session_state.r3_models[i] == 0)
             incorrect_standing = sum(1 for i in range(10) if st.session_state.r3_selected[i] and st.session_state.r3_models[i] == 1)
             total_standing = sum(1 for m in st.session_state.r3_models if m == 0)

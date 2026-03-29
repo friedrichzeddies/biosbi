@@ -344,7 +344,6 @@ def render() -> None:
     data = _build_phantom()
 
     # ==================== STAGE 1: FORWARD PROBLEM ====================
-    st.markdown("---")
     st.subheader("Stage 1: Single projection anatomy")
     st.write(
         "A single projection at angle θ is a line integral through the object. "
