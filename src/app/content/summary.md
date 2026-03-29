@@ -1,3 +1,5 @@
+## _Have you read both pages? If so, you can now continue to the summary. Else, go up and see the next chapter._
+
 ## Summary
 
 This chapter sequence is dense, but it follows one clean logic from beginning to end.
