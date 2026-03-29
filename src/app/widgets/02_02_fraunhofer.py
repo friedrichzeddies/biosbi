@@ -231,6 +231,6 @@ def fraunhofer_diffraction_widget() -> None:
 			#ax.set_ylim(0.0, AMPLITUDE_AXIS_MAX)
 			#ax.grid(True, alpha=0.3)
 			ax.legend()
-			ax.set_title(f"Regime: {regime} ($x = {config['observation_distance']:.1f}$, Fresnel $N = {fresnel_num:.2f})$")
+			ax.set_title(f"Regime: {regime} ($x = {config['observation_distance']:.1f}$, Fresnel $N = {fresnel_num:.2f}$)")
 			fig.tight_layout()
 			st.pyplot(fig)

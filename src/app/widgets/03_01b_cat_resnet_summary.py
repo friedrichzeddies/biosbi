@@ -244,10 +244,10 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
 
         with right:
             st.markdown("### ResNet summary")
-            st.caption(f"Embedding dimension: {summary_np.shape[0]}")
+            st.write(f"Embedding dimension: {summary_np.shape[0]}")
             summary_img = _embedding_to_image(summary)
             summary_img_np = summary_img.detach().cpu().numpy()
-            
+            st.write(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
             fig_sum, ax_sum = plt.subplots(figsize=(5, 4))
             im = ax_sum.imshow(
                 summary_img_np,
@@ -267,7 +267,6 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
             st.pyplot(fig_sum)
             plt.close(fig_sum)
             
-            st.caption(f"Grid shape: {summary_img_np.shape[0]} x {summary_img_np.shape[1]} (no padding)")
             if summary_np.shape[0] == 128:
                 st.caption(
                     "Note: This 128-d embedding is shown as an 8x16 grid for readability only. "
@@ -278,7 +277,7 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
     with st.expander("📝 Interesting Observations"):
         st.markdown("""
             **Interesting observations:**
-            - **Recommend the 10 cat model**: Try switching to this model to the 10 cat models as you can gradually follow the changes in embedding.
+            - **We recommend the 10 cat model**: Try switching to this model to the 10 cat models as you can gradually follow the changes in embedding.
             - **View from the side**: Rotate the cat to a side view and watch the summary change significantly as unique features are revealed.
             - **Ambiguity**: Use a view where conformations look very similar (e.g., rotations near `-30, 0, -90`); notice the summary barely changes. It's interesting that the embedding is almost invariant to different in conformations as seen from this projection. This certainly will make learning the neural posterior very hard, at least for those orientations.
         """)
