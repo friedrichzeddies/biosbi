@@ -52,5 +52,3 @@ To verify this, we repeat the experiment many times and plot a histogram of the 
 - If it is not, the model is systematically wrong (e.g., overconfident or biased).
 
 You can explore this for yourself:
-
-[sbi theory widget]

@@ -41,5 +41,3 @@ In summary, the world (or rather this site) is your binary oyster program.
 #### A starting challenge
 
 In order to finally get started, put some ✨intuition✨ behind the rather unspecific words we used so far and, in line with our goal to keep things fun and interactive, take a moment to ponder this question:
-
-[Interaction: What is the explanatory variable for this blob slice? or something similar, Quiz like with a few answers and funny responses or so?]

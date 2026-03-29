@@ -18,4 +18,4 @@ Using the methods just covered, we can explore how our pre-trained models perfor
 
 Let's see this in action in the next interactive widget:
 
-[sbi own data widget]
+<!-- TODO(widget): Display SBI own-data widget here. -->

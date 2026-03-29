@@ -92,7 +92,6 @@ This type of dimensionality reduction is quite abstract. It’s also quite usefu
 
 To give you a small break from the, honestly very heavy content we just served, we’ve made a small widget which allows you to see what a summary network actually does. Bad news: it’s not going to make a lot of sense to us humans. In order to not crowd the main text, there is a collapsible box underneath the widget that may help to guide you to some interesting observations about the summary network. Note that while we show the output as an image (because it still has a high dimension) one really needs to keep in mind that at the stage of the summary network, it is not meant to be interpreted as an image in the sense a human understands it. The summary network ideally learns meaningful connections between an image (as a human would understand) and an abstract lower dimension space – so don’t be too sad if it doesn’t make sense. We are only human, after all.
 
-[widget]
 [collapsable box text:
 Interesting observations:
 Recommend the 10 cat model:
