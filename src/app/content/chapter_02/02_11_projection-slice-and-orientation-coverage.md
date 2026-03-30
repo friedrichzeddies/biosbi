@@ -1,10 +1,10 @@
-In a nutshell, this is the proof for our treatment of the cat as an image. As the scattering takes place in a single plane for us, this projection is what we transform back and receive an image from. This is allowed by the _projection slice theorem_ which is covered and explained below.
+In a nutshell, this justifies our earlier treatment of the cat as a 2D image. Scattering occurs on a single plane in Fourier Space. There is a nice result from mathematics which state that a fourier transform of projection image of a 3D object corresponds to a single plane in the object's 3D Fourier Space. This is called the *Projection-Slice Theorem*.
 
-We want to hand over with that by giving you this thought: one beautiful projection is still incomplete information. Next we quantify how many differently oriented slices we need before a reconstruction becomes reliable.
+We transition to the next topic with this thought: one beautiful projection is still fundamentally incomplete information. Next, we explore exactly how many differently oriented slices we need before a 3D reconstruction becomes reliable.
 
 ### Projection-Slice and Orientation Coverage: Why One View Is Never Enough
 
-As said above, a single slice in Fourier space gives us a slice in 2D real space. And importantly, one projection gives one orientation-dependent Fourier slice, not the whole 3D information of the object. This is the short version of the projection slice theorem.
+As stated above, extracting a single slice in 3D Fourier space gives us a 2D projection in real space. Crucially, a single projection provides only one orientation-dependent Fourier slice—not the complete 3D structure of the object. This is the concise essence of the Projection-Slice Theorem.
 
 ![Graphic of the projection slice theorem.](../../assets/EBP-02-ProjSliceTh.png)
 

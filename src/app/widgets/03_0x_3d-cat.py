@@ -53,7 +53,7 @@ def render():
     # Call the RAW component function directly, completely bypassing stl_from_text tempfile bugs
     _component_func(
         file_path=f"cat_conformation_{frame_idx:02d}.stl",
-        color='#E8DCC4',
+        color='#E74C3C',
         material='material',
         auto_rotate=False,
         opacity=1,

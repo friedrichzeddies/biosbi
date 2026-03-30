@@ -1,15 +1,15 @@
 ### Small Table of Concepts and Prerequisites
 
-Essentially, this part will consist of the following line of thought:
+Essentially, this part will consist of the following train of thought:
 
-1. Waves: a good place to start from in physics
-2. Fourier Transforms: the language of imaging
-3. Real systems: what do we have to account for theoretically and practically?
+1. Waves: In physics, that's always a good place to start from
+2. Fourier Transforms: Why they are the language of image formation
+3. Real systems: What do we have to account for theoretically and practically?
 
-In order to tackle that challenge, we will have to set some prerequisites, and assume that basic calculus and core physics (from pretty much all domains, from quantum mechanics and atomic physics to classical descriptions) are well established for the reader. As we don't have the time to go much deeper and are probably implicitely assuming that knowledge sometimes, we still hope that the course makes sense in its construction.
+In order to tackle that challenge, we will have to set some prerequisites, and assume that basic calculus and core physics (ranging from classical mechanics to introductory quantum and atomic physics) are well established for the reader. Since we cannot cover these fundamentals in depth, we sometimes assume this knowledge implicitly. Nevertheless, we hope the course remains intuitive and clearly structured.
 
 ### Waves and Diffraction: Where the Story Actually Begins
 
-As we assume that a good portion never heard about Cryo-EM before in detail, we aim for a motivation from the ground up, and this means – as often in physics – we should start with waves. Almost everything that follows rests on one plain idea: waves meet, waves interfere, and that interference is what later becomes image contrast.
+Assuming many readers have never studied cryo-EM in detail, our goal is to build intuition from the ground up. As is often the case in physics, we start with waves. Almost everything that follows rests on one simple principle: waves meet, waves interfere, and that interference ultimately creates image contrast.
 
-It sounds almost too simple at first, but this is exactly why it is important to study. Lets first start with a relatively simple wave.
+It sounds almost too simple at first, but that is exactly why it is so important. Let's start by observing a relatively simple wave.

@@ -1,5 +1,5 @@
 ### Fourier Manipulation in 2D
 
-The 2D case motivates how this is directly relevant for Cryo-EM: because our data are images and because many imaging effects are easier to understand in frequency space than in pixel space, using the Fourier language is making things _a lot_ easier.
+The 2D case illustrates why this is directly relevant for cryo-EM. Because our data consists of images, and because many imaging effects are far easier to understand in frequency space rather than in pixel space, adopting the Fourier language makes interpreting the physics *a lot* easier.
 
-After a brief contact in the very beginning of the course, we now want to officially introduce you to our test subject: _cat_.
+Following a brief encounter at the very beginning of the course, we now want to officially introduce you to our primary test subject: *the cat*.

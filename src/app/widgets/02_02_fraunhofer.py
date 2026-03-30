@@ -166,10 +166,9 @@ def _theoretical_sinc_amplitude(y_vals: np.ndarray, observation_distance: float)
 
 @st.fragment
 def fraunhofer_diffraction_widget() -> None:
-	st.header("Single-Slit Propagation: Near Field to Far Field")
 	st.caption(
 		"A planar wave enters from negative x and passes through one slit at x=0. "
-		"Increase the observation distance to approach the Fraunhofer (Fourier/sinc) regime."
+		"Increase the observation distance to observe the diffraction pattern changing. (Note, at higher observations some aliasing occurs in the visualisation)"
 	)
 
 	col1, col2, col3 = st.columns([1, 1, 1.5])
@@ -179,14 +178,11 @@ def fraunhofer_diffraction_widget() -> None:
 			st.markdown("### Observation")
 			observation_distance = st.slider(
 				"Max $x$ (observation distance)",
-				min_value=OBSERVATION_DISTANCE_MIN / 2,
-				max_value=OBSERVATION_DISTANCE_MAX / 2,
+				min_value=1.,
+				max_value=30.,
 				value=1.0,
 				step=0.2,
-				help=(
-					"Upper limit is chosen from the Fraunhofer scale $x >> a^2/\lambda$. "
-					f"Here $a^2/\lambda = {FRAUNHOFER_REFERENCE_DISTANCE:.2f}$, so max $x = {OBSERVATION_DISTANCE_MAX:.1f}$."
-				),
+				
 			)
 			st.caption("Choose parameters freely, then click 'Apply' once to run the simulation.")
 			submitted = st.form_submit_button("Apply Parameters", type="primary")
@@ -207,7 +203,7 @@ def fraunhofer_diffraction_widget() -> None:
 			st.image(gif_bytes, caption="Planar incident wave and slit diffraction", width="content")
 
 		with col3:
-			st.markdown("#### Amplitude at $x = \max x$")
+			st.markdown("#### Amplitude at observation distance (right edge of screen)")
 
 			y_vals, measured = _extract_measured_amplitude(config)
 			fig, ax = plt.subplots(figsize=(6.5, 4.0))
@@ -233,4 +229,5 @@ def fraunhofer_diffraction_widget() -> None:
 			ax.legend()
 			ax.set_title(f"Regime: {regime} ($x = {config['observation_distance']:.1f}$, Fresnel $N = {fresnel_num:.2f}$)")
 			fig.tight_layout()
-			st.pyplot(fig)
+			st.pyplot(fig, clear_figure=True)
+			plt.close(fig)

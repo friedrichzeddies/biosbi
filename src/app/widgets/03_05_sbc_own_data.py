@@ -91,7 +91,8 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
                     fig1, ax1 = plt.subplots(figsize=(4, 4))
                     ax1.imshow(image[0].numpy(), cmap='gray')
                     ax1.axis('off')
-                    st.pyplot(fig1)
+                    st.pyplot(fig1, clear_figure=True)
+                    plt.close(fig1)
                     
                 with vis_col2:
                     st.write(f"**Inferred Posterior** (Rank: {rank})")
@@ -147,7 +148,8 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
                     ax_hist.set_xlim(-0.5, num_models - 0.5)
                     
                     plt.tight_layout()
-                    st.pyplot(fig2)
+                    st.pyplot(fig2, clear_figure=True)
+                    plt.close(fig2)
                 
                 st.info(f"**Calculated Rank:** The true $\\theta^*$ ({true_idx:.2f}) is larger than **{rank}** out of the {M} samples.")
                 st.markdown("""
@@ -161,7 +163,8 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
             fig1, ax1 = plt.subplots(figsize=(4, 4))
             ax1.imshow(image[0].numpy(), cmap='gray')
             ax1.axis('off')
-            st.pyplot(fig1)
+            st.pyplot(fig1, clear_figure=True)
+            plt.close(fig1)
 
 # ==========================================
 # Fragment 2: Mass SBC Validation
@@ -262,7 +265,8 @@ def _render_mass_sbc(simulator, posterior, M, snr_scale, defocus_scale, b_factor
         ax2.set_ylim(0, 1.02)
         ax2.legend()
         
-        st.pyplot(fig_res)
+        st.pyplot(fig_res, clear_figure=True)
+        plt.close(fig_res)
         
         # 3. Dynamic Pathology Explainers
         # Using independent flags so multiple issues can be reported

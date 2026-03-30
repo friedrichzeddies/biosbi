@@ -131,7 +131,6 @@ def _show_payload_and_gif(payload: dict, section_title: str) -> None:
 
 @st.fragment
 def single_wave() -> None:
-	st.header("2D Circular Wave Simulator")
 	st.caption("Adjust sliders, then apply once to compute one period and play a smooth looping GIF.")
 	col1, col2 = st.columns(2)
 
@@ -165,7 +164,6 @@ def single_wave() -> None:
 
 @st.fragment
 def huygens_fresnel_widget() -> None:
-	st.header("Two-Source Interference Simulator")
 	st.caption(
 		"Work on interference: source 1 is fixed; source 2 phase and position are adjustable."
 	)

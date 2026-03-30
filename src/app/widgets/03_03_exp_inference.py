@@ -631,7 +631,7 @@ def render_ui():
         st.pyplot(fig)
         plt.close(fig)
         
-    with st.expander("🧪 Interesting things to try"):
+    with st.expander("Interesting things to try"):
         st.markdown(r"""
             There’s a lot of sliders to handle! To guide your exploration, we’ve included several presets:
 

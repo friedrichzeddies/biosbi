@@ -134,6 +134,7 @@ def render() -> None:
     col_plot, col_info = st.columns([1.4, 0.6])
     with col_plot:
         st.pyplot(fig, clear_figure=True)
+        plt.close(fig)
 
     with col_info:
         st.metric("Electron λ", f"{lam_e:.4f} Å")

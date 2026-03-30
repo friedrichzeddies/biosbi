@@ -255,7 +255,7 @@ def _render_umap_results(result):
     ax.set_xlabel("UMAP-1")
     ax.set_ylabel("UMAP-2")
     ax.legend(loc="best")
-    st.pyplot(fig, use_container_width=False)
+    st.pyplot(fig, width="content")
     plt.close(fig)
 
     st.markdown("### Result Summary")
@@ -415,7 +415,7 @@ def render_ui():
                     st.slider("B-factor scale", 0.1, 5.0, step=0.1, key="umap_slider_bfactor")
                     st.slider("SNR scale", 0.1, 5.0, step=0.1, key="umap_slider_snr")
 
-                if st.button("Reset manual values to 1.0", key="umap_reset_manual", use_container_width=True):
+                if st.button("Reset manual values to 1.0", key="umap_reset_manual", width="stretch"):
                     _reset_manual_scales()
                     st.rerun()
 
@@ -478,7 +478,7 @@ def render_ui():
         else:
             st.info(reason)
 
-    run_btn = st.button("Run UMAP validation", type="primary", use_container_width=True)
+    run_btn = st.button("Run UMAP validation", type="primary", width="stretch")
 
     if not run_btn:
         if "umap_cached_result" in st.session_state:

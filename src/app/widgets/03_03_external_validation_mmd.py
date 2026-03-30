@@ -331,7 +331,7 @@ def _render_mmd_results(result):
                 ax.set_xlabel("MMD^2")
                 ax.set_ylabel("Count")
                 ax.legend(loc="best", fontsize=8)
-                st.pyplot(fig, use_container_width=True)
+                st.pyplot(fig, width="stretch")
                 plt.close(fig)
             else:
                 st.info("Enable 'Show permutation null-distribution plot' to display the diagnostic plot.")
@@ -498,7 +498,7 @@ def render_ui():
                     st.slider("B-factor scale", 0.1, 5.0, step=0.1, key="mmd_slider_b_factor")
                     st.slider("SNR scale", 0.1, 5.0, step=0.1, key="mmd_slider_snr")
 
-                if st.button("Reset manual values to 1.0", key="mmd_reset_manual", use_container_width=True):
+                if st.button("Reset manual values to 1.0", key="mmd_reset_manual", width="stretch"):
                     _reset_manual_scales()
                     st.rerun()
 
@@ -541,7 +541,7 @@ def render_ui():
         else:
             st.info(reason)
 
-    run_btn = st.button("Run MMD validation", type="primary", use_container_width=True)
+    run_btn = st.button("Run MMD validation", type="primary", width="stretch")
 
     if not run_btn:
         if "mmd_cached_result" in st.session_state:

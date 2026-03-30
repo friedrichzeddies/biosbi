@@ -125,7 +125,7 @@ def _seed_from_values(values):
 def render(instance_id: str = "main"):
     st.subheader("Full Cryo-EM Cat Simulation")
     st.write(
-        "Control the full image-formation chain: projection, CTF filtering, with a focus on now newly introduced noise."
+        "Control the full image-formation chain: projection, CTF filtering, with a focus on now newly introduced noise. As a little sneak-peak, you can already change the conformation (we'll explain shortly) of the cat!"
     )
 
     try:
@@ -141,7 +141,7 @@ def render(instance_id: str = "main"):
     sigma_min, sigma_max = _as_range(simulator._config.get("SIGMA", [0.5, 5.0]), 0.5, 5.0)
     defocus_min, defocus_max = _as_range(simulator._config.get("DEFOCUS", [0.5, 2.0]), 0.5, 2.0)
     b_factor_min, b_factor_max = _as_range(simulator._config.get("B_FACTOR", [1.0, 100.0]), 1.0, 100.0)
-    snr_linear_min, snr_linear_max = _as_range(simulator._config.get("SNR", [0.001, 1.0]), 0.001, 1.0)
+    snr_linear_min, snr_linear_max = _as_range(simulator._config.get("SNR", [0.001, 30.0]), 0.001, 30.0)
     amp_value = float(np.clip(_as_scalar(simulator._config.get("AMP", 0.1), 0.1), 1e-6, 0.99))
     shift_limit = float(abs(_as_scalar(simulator._config.get("SHIFT", 0.0), 0.0)))
 
@@ -152,7 +152,7 @@ def render(instance_id: str = "main"):
         snr_linear_min,
         snr_linear_max,
         0.001,
-        1.0,
+        30.0,
         min_span=1e-4,
     )
     snr_linear_min = max(float(snr_linear_min), 1e-6)
@@ -175,7 +175,6 @@ def render(instance_id: str = "main"):
         snr_default = float(np.clip(0.1, snr_linear_min, snr_linear_max))
 
         st.markdown("#### Noise")
-        st.caption("Primary control: use SNR to explore how noise strength changes reconstruction quality.")
         snr_linear_val = _slider_with_safe_range(
             "SNR (linear)",
             snr_linear_min,

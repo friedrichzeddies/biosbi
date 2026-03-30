@@ -84,7 +84,7 @@ def render(instance_id: str = "main"):
         fig, ax = plt.subplots(figsize=(3.0, 3.0))
         ax.imshow(img_data, cmap="gray")
         ax.axis("off")
-        st.pyplot(fig, use_container_width=False)
+        st.pyplot(fig, width="content")
         plt.close(fig)
 
 

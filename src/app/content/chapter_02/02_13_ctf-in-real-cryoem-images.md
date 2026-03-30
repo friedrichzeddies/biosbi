@@ -10,8 +10,8 @@ A microscope does not simply record structure. It reshapes frequency content bef
 
 That is why raw cryo-EM images can look low-contrast, partly inverted, or just confusing at first glance. CTF zero crossings remove information at specific frequencies. Oscillations can flip contrast. Envelope terms damp high-frequency detail. So two images of the same object can look surprisingly different under different settings.
 
-Now add dose limits. We cannot blast fragile biological samples with unlimited electrons, so we operate in a low-dose regime where single-image _signal-to-noise ratio_ (SNR) is poor. The hard combination is this: CTF weakens part of the frequency content first, then noise further obscures what remains. This is not a failure of interpretation skill. It is the native operating condition of the experiment.
+Now add dose limits. We cannot blast fragile biological samples with unlimited electrons, so we operate in a low-dose regime where the single-image *signal-to-noise ratio* (SNR) is extremely poor. The hard combination is this: the CTF weakens part of the frequency content first, then noise further obscures what remains. This is not a failure of interpretation skill. It is the native, unfiltered operating condition of the experiment.
 
-This is also why averaging and inference are so important later. You do not recover structure by finding one magical image. You recover it by combining many transfer-modulated, noisy views in a physically consistent way.
+This is exactly why averaging, and inference later on, are so critical. You do not recover structure by finding one magical image; you recover it by combining many transfer-modulated, extremely noisy views in a physically consistent way.
 
-The full picture is now close to our quiz in the beginning and the final stage of our data generation process, relevant for inference. Below, you should play around with the simulation of the cat and check if all concepts are clear by now.
+This full picture brings us back to our introductory quiz. Below, you can play around with the full simulation pipeline of the cat. Check if all these physical concepts are intuitively clear to you by now.

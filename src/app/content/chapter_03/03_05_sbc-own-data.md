@@ -1,6 +1,6 @@
-### Applying Simulation Based Calibration (Rank Statistics) for our own data
+### Applying Simulation-Based Calibration (Rank Statistics) to our own data
 
-Now that we have a grasp on one potential method to check if our model is consistent with our simulated data, we can apply this knowledge to our own cat-conformation-checking model.
+Now that we have a grasp on one potential method to check if our model is consistent with our simulated data, we can apply this knowledge to our own cat-conformation inference model.
 
 What would the equivalent of a “single trial” from the previous explainer be for our case?
 
@@ -12,7 +12,7 @@ What would the equivalent of a “single trial” from the previous explainer be
 
 - Step 4: Count how many of the M predicted samples are smaller than the original “true” \theta^\*. This integer is your rank statistic for this trial.
 
-By repeating these 4 steps $N$ times, we can build the histogram/ECDF plots from the previous page to see if our cat-model is actually "honest" about its conformational uncertainty. Here, $N$ is how many individual trials we do. A rough guideline as to what is a big enough $N$ is to make sure that your rank histogram stays stable if you repeat the whole calculation. That means you've sampled from a well enough covered volume of your priors (orientation, noise, CTF etc.) to have a, to first order, representative sample.
+By repeating these 4 steps $N$ times, we can build the histogram and ECDF plots shown on the previous page to see if our cat-model is genuinely "honest" about its conformational uncertainty. Here, $N$ is the number of individual trials we perform. A rough guideline for choosing a large enough $N$ is to ensure your rank histogram stays stable if you repeat the entire calculation. Stability implies you've sampled a sufficiently large volume of your priors (orientation, noise, CTF, etc.) to obtain a broadly representative sample.
 
 Using the methods just covered, we can explore how our pre-trained models perform:
 

@@ -71,12 +71,23 @@ def inject_custom_css():
     
     section[data-testid="stSidebar"] .stMarkdown li ul li a {
         padding-left: 28px;
-        font-size: 0.92rem;
+        font-size: 0.95rem;
         color: #444;
     }
     
     section[data-testid="stSidebar"] .stMarkdown li ul li a:hover {
         padding-left: 32px;
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown li ul li ul li a {
+        padding-left: 40px;
+        font-size: 0.88rem;
+        color: #666;
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown li ul li ul li a:hover {
+        padding-left: 44px;
+        color: #ee6352;
     }
     
     /* Simple anchor offset to avoid headers hiding behind sticky bars if any */
@@ -105,24 +116,24 @@ def main():
 
 - **[Cryo-EM Image Formation](#cryo-em)**
   - [1.1 Waves & Diffraction](#waves-diffraction)
-  - [Huygens Simulator](#huygens-simulator)
-  - [Fraunhofer Diffraction](#fraunhofer-simulator)
+    - [Huygens Simulator](#huygens-simulator)
+    - [Fraunhofer Diffraction](#fraunhofer-simulator)
   - [1.2 Fourier Intuition](#fourier-intuition)
-  - [1D & 2D Fourier](#fourier-decomp)
-  - [Fourier Manipulation](#fourier-manipulation)
+    - [1D & 2D Fourier](#fourier-decomp)
+    - [Fourier Manipulation](#fourier-manipulation)
   - [1.3 Imaging Geometry](#imaging-geometry)
-  - [Ewald Sphere & Projection](#projection-slice)
-  - [Lenses & CTF](#lenses-ctf)
-  - [Full Simulation Pass](#full-simulation-pass)
+    - [Ewald Sphere & Projection](#projection-slice)
+    - [Lenses & CTF](#lenses-ctf)
+    - [Full Simulation Pass](#full-simulation-pass)
 
 - **[Simulation-Based Inference](#sbi)**
   - [2.1 SBI Foundations](#sbi-foundations)
-  - [3D Embeddings](#sbi-embeddings)
-  - [Experiment Inference](#experiment-inference)
+    - [3D Embeddings & Ill-Posedness](#sbi-embeddings)
   - [2.2 Misspecification](#misspecification)
-  - [Validation Techniques](#validation-techniques)
+    - [Experiment Inference](#experiment-inference)
+    - [Validation Techniques](#validation-techniques)
   - [2.3 Simulation Calibration (SBC)](#sbc-calibration)
-  - [Apply SBC](#sbc-own-data)
+    - [Apply SBC](#sbc-own-data)
 
 - **[Summary & Sources](#outro)**
     """)
@@ -136,7 +147,6 @@ def main():
     render_markdown("01_intro.md", base_dir=CONTENT_DIR)
 
     anchor("intro-quiz")
-    st.markdown("### Interactive: Intuition Check")
     run_widget("01_intro-quiz.py", "render")
     
     st.divider()
@@ -145,18 +155,20 @@ def main():
     st.title("Chapter 1: Cryo-EM Image Formation")
     
     anchor("waves-diffraction")
-    st.header("1.1 Waves & Diffraction")
     render_markdown("02_01_waves-and-diffraction.md", base_dir=CHAPTER2_DIR)
     run_widget("02_01_huygens.py", "single_wave")
     render_markdown("02_02_multiple_waves.md", base_dir=CHAPTER2_DIR)
     
     anchor("huygens-simulator")
-    st.markdown("### Interactive: Huygens Simulator")
+
     run_widget("02_01_huygens.py", "huygens_fresnel_widget")
+    render_markdown("02_03_huygens.md", base_dir=CHAPTER2_DIR)
+
     run_widget("02_01_huygens.py", "multiple_sources_wave")
     
     anchor("fraunhofer-simulator")
-    st.markdown("### Interactive: Fraunhofer Diffraction")
+    render_markdown("02_04_fraunhofer-bridge.md", base_dir=CHAPTER2_DIR)
+
     run_widget("02_02_fraunhofer.py", "fraunhofer_diffraction_widget")
 
     st.divider()
@@ -166,14 +178,12 @@ def main():
     render_markdown("02_05_fourier-intuition-1d-to-2d.md", base_dir=CHAPTER2_DIR)
     
     anchor("fourier-decomp")
-    st.markdown("### Interactive: 1D & 2D Fourier")
     run_widget("02_03_1D-fourier-decomp.py", "render")
     run_widget("02_04_2D-fourier-decomp.py", "render")
     
     render_markdown("02_06_fourier_manipulation.md", base_dir=CHAPTER2_DIR)
     
     anchor("fourier-manipulation")
-    st.markdown("### Interactive: Fourier Manipulation")
     run_widget("02_06_cat_projector.py", "render")
     render_markdown("02_06a_detour-and-fourier-manipulation.md", base_dir=CHAPTER2_DIR)
     run_widget("02_05_masked-2d-fourier.py", "render")
@@ -207,7 +217,7 @@ def main():
     anchor("full-simulation-pass")
     st.markdown("### Interactive: Full Simulation Pass")
     run_widget("02_09_full-simulation-pass.py", "render")
-    
+    anchor("full-simulation-pass")
     render_markdown("02_14_spa-sample-prep-and-heterogeneity.md", base_dir=CHAPTER2_DIR)
 
     st.divider()
@@ -219,26 +229,27 @@ def main():
     st.header("2.1 SBI Foundations")
     render_markdown("03_01_sbi-explainer.md", base_dir=CHAPTER3_DIR)
     run_widget("03_0x_3d-cat.py", "render")
-    run_widget("03_01_ill-posedness.py", "render_ui")
     
     anchor("sbi-embeddings")
     render_markdown("03_01b_resnets.md", base_dir=CHAPTER3_DIR)
     run_widget("03_01b_cat_resnet_summary.py", "render")
     
     render_markdown("03_02_NPE-explainer.md", base_dir=CHAPTER3_DIR)
-    anchor("experiment-inference")
-    st.markdown("### Interactive: Experiment Inference")
-    run_widget("03_03_exp_inference.py", "render_ui")
+    run_widget("03_01_ill-posedness.py", "render_ui")
+
 
     st.divider()
 
     anchor("misspecification")
     st.header("2.2 Misspecification")
     render_markdown("03_03_model_misspec_general.md", base_dir=CHAPTER3_DIR)
+    anchor("experiment-inference")
+    
     
     anchor("validation-techniques")
     st.markdown("### Interactive: Validation Techniques")
     with st.expander("Validation Tools", expanded=False):
+        run_widget("03_03_exp_inference.py", "render_ui")
         run_widget("03_02_external_validation_umap.py", "render_ui")
         run_widget("03_03_external_validation_mmd.py", "render_ui")
 
@@ -250,7 +261,6 @@ def main():
     run_widget("03_04_simulation-based-calibration.py", "render")
     
     anchor("sbc-own-data")
-    st.markdown("### Interactive: Apply SBC")
     render_markdown("03_05_sbc-own-data.md", base_dir=CHAPTER3_DIR)
     run_widget("03_05_sbc_own_data.py", "render")
 

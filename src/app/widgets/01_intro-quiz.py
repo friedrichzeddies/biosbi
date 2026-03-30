@@ -38,8 +38,9 @@ def generate_round1_image(simulator, model_idx=0, rot_x=90, rot_y=90, rot_z=0):
     sigma_cfg = simulator._config["SIGMA"]
     sigma_value = float(sum(sigma_cfg) / len(sigma_cfg)) if isinstance(sigma_cfg, list) else float(sigma_cfg)
 
+    quat_np = np.array([R.from_euler("xyz", [rot_x, rot_y, rot_z], degrees=True).as_quat()])
     quat_tensor = torch.tensor(
-        [R.from_euler("xyz", [rot_x, rot_y, rot_z], degrees=True).as_quat()],
+        quat_np,
         dtype=torch.float32,
         device=device,
     )
@@ -60,7 +61,8 @@ def generate_round1_image(simulator, model_idx=0, rot_x=90, rot_y=90, rot_z=0):
 def generate_projections(simulator, model_idx, rot_x, rot_y, rot_z):
     parameters = simulator._priors.sample((1,))
     idx_tensor = torch.tensor([[model_idx]], dtype=torch.float32)
-    quat_tensor = torch.tensor([R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_quat()], dtype=torch.float32)
+    quat_np = np.array([R.from_euler('xyz', [rot_x, rot_y, rot_z], degrees=True).as_quat()])
+    quat_tensor = torch.tensor(quat_np, dtype=torch.float32)
     
     batch_params = [
         idx_tensor, quat_tensor, 
@@ -162,10 +164,10 @@ def render_round2_or_3(round_prefix, verify_button_text):
             for i in range(10):
                 col = cols[i % 5]
                 with col:
-                    st.image(images[i], use_container_width=True)
+                    st.image(images[i], width="stretch")
                     st.checkbox("Select", key=f"{round_prefix}_chk_{i}", label_visibility="collapsed")
 
-            submitted = st.form_submit_button(verify_button_text, use_container_width=True, type="primary")
+            submitted = st.form_submit_button(verify_button_text, width="stretch", type="primary")
 
         if submitted:
             st.session_state[f"{round_prefix}_selected"] = [
@@ -182,7 +184,7 @@ def render_round2_or_3(round_prefix, verify_button_text):
                     img_render = draw_border(img_render, [0, 0, 1.0], thickness=4)
                 if st.session_state[f"{round_prefix}_models"][i] == 0:
                     img_render = draw_border(img_render, [0, 1.0, 0], thickness=4)
-                st.image(img_render, use_container_width=True)
+                st.image(img_render, width="stretch")
 
         selected = st.session_state[f"{round_prefix}_selected"]
         models = st.session_state[f"{round_prefix}_models"]
@@ -253,13 +255,13 @@ def render():
         
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.image(st.session_state.r1_image, use_container_width=True, caption="Clean Projection")
+            st.image(st.session_state.r1_image, width="stretch", caption="Clean Projection")
             
         if not st.session_state.r1_flipped:
             st.markdown("<div style='text-align: center; margin-top:20px;'>Select a card:</div>", unsafe_allow_html=True)
             bc1, bc2 = st.columns(2)
-            choose_standing = bc1.button("Standing", use_container_width=True)
-            choose_lying = bc2.button("Lying Down", use_container_width=True)
+            choose_standing = bc1.button("Standing", width="stretch")
+            choose_lying = bc2.button("Lying Down", width="stretch")
 
             if choose_standing or choose_lying:
                 st.session_state.r1_choice = "standing" if choose_standing else "lying"
@@ -273,7 +275,7 @@ def render():
                 
             st.button(
                 "Next Round",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 on_click=move_to_round,
                 args=(2,),
@@ -282,7 +284,7 @@ def render():
     elif st.session_state.quiz_round == 2:
         st.markdown('<div class="captcha-header">Select all images where the cat is STANDING</div>', unsafe_allow_html=True)
         st.markdown("### Round 2: Clean Projections")
-        st.write("These are random projections of the cat either lying down or standing up.")
+        st.write("These are random projections of the cat either lying down or standing up. Please select all standing cats:")
 
         score = render_round2_or_3(round_prefix="r2", verify_button_text="Verify")
             
@@ -296,7 +298,7 @@ def render():
                 
             st.button(
                 "Next Round",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 on_click=move_to_round,
                 args=(3,),
@@ -304,8 +306,8 @@ def render():
 
     elif st.session_state.quiz_round == 3:
         st.markdown('<div class="captcha-header">Select all images where the cat is STANDING</div>', unsafe_allow_html=True)
-        st.markdown("### Round 3: Parameterized Projections (Cryo-EM)")
-        st.write("Now using full simulation parameters with noise and CTF. This will be quite hard.")
+        st.markdown("### Round 3: Real Projections (Cryo-EM)")
+        st.write("This is how an Electron Microscopist sees our cat. Once again, please select all standing cats. This will be quite hard.")
 
         score = render_round2_or_3(round_prefix="r3", verify_button_text="Verify Captcha")
             
@@ -317,7 +319,7 @@ def render():
             else:
                 st.error("As expected, this is incredibly hard. Welcome to the ill-posed problem of pure 2D projection interference!")
             
-            st.button("Reset Captcha", use_container_width=True, on_click=reset_quiz_state)
+            st.button("Reset Captcha", width="stretch", on_click=reset_quiz_state)
 
 if __name__ == "__main__":
     st.set_page_config(page_title="Cat Captcha", layout="wide")

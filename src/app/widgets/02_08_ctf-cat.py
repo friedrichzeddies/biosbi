@@ -258,6 +258,8 @@ def render(instance_id: str = "main"):
         ax2.axis("off")
         st.pyplot(fig1, clear_figure=True)
         st.pyplot(fig2, clear_figure=True)
+        plt.close(fig1)
+        plt.close(fig2)
 
     with col3:
         fig4, ax4 = plt.subplots(figsize=(6, 4), dpi=DISPLAY_DPI)
@@ -268,6 +270,7 @@ def render(instance_id: str = "main"):
         ax4.set_ylabel("CTF")
         ax4.grid(alpha=0.25)
         st.pyplot(fig4, clear_figure=True)
+        plt.close(fig4)
 
         fig5, ax5 = plt.subplots(figsize=(6, 4), dpi=DISPLAY_DPI)
         ctf_vis = np.fft.fftshift(ctf_2d)
@@ -276,6 +279,7 @@ def render(instance_id: str = "main"):
         ax5.axis("off")
         fig5.colorbar(im, ax=ax5, fraction=0.046, pad=0.04)
         st.pyplot(fig5, clear_figure=True)
+        plt.close(fig5)
 
         st.caption("High resolution map of the theoretical form of a CTF.")
 
@@ -295,6 +299,7 @@ def render(instance_id: str = "main"):
             ax_diff1.set_title("Signed Difference (CTF - Original)")
             ax_diff1.axis("off")
             st.pyplot(fig_diff1, clear_figure=True)
+            plt.close(fig_diff1)
 
         with diff_col2:
             fig_diff2, ax_diff2 = plt.subplots(figsize=(4.8, 4))
@@ -302,6 +307,7 @@ def render(instance_id: str = "main"):
             ax_diff2.set_title("Absolute Difference |CTF - Original|")
             ax_diff2.axis("off")
             st.pyplot(fig_diff2, clear_figure=True)
+            plt.close(fig_diff2)
 
         st.caption("Difference is computed as image_after_ctf - image_original on the same pixel grid.")
 
@@ -325,6 +331,7 @@ def render(instance_id: str = "main"):
 
         plt.tight_layout()
         st.pyplot(fig6, clear_figure=True)
+        plt.close(fig6)
 
 
 if __name__ == "__main__":

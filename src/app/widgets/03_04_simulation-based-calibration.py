@@ -46,7 +46,7 @@ def _render_single_trial(post_mu, post_sigma, M):
     if "sbc_1_true_theta" not in st.session_state:
         st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
 
-    if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", use_container_width=True):
+    if st.button("Simulate New Trial (Draw True $\\theta^*$ & Re-sample)", help="Randomly draws a new true parameter from the Prior, and redraws the simulated posterior samples.", width="stretch"):
         st.session_state.sbc_1_true_theta = float(np.random.normal(0, 1.0))
 
     true_theta = st.session_state.sbc_1_true_theta
@@ -90,11 +90,12 @@ def _render_single_trial(post_mu, post_sigma, M):
     ax1.set_xlabel("$\\theta$ value")
     ax1.legend(loc='upper right')
 
-    st.pyplot(fig1)
+    st.pyplot(fig1, clear_figure=True)
+    plt.close(fig1)
     
     # Small explainer box for this specific trial's rank
-    st.info(f"**Rank of $\\theta^*$ = {rank}** — Out of {M} predicted posterior samples, **{rank}** fell below the true $\\theta^*={true_theta:+.2f}$. That places $\\theta^*$ at position {rank} out of {M}.")
-
+    with st.container(height=120, border=False):
+        st.info(f"**Rank of $\\theta^*$ = {rank}** — Out of {M} predicted posterior samples, **{rank}** fell below the true $\\theta^*={true_theta:+.2f}$. That places $\\theta^*$ at position {rank} out of {M}.")
 @st.fragment
 def _render_histogram(post_mu, post_sigma, M):
     """Isolated fragment: only re-runs when sliders change, NOT when the trial button is pressed."""
@@ -135,24 +136,26 @@ def _render_histogram(post_mu, post_sigma, M):
     ax2.set_ylabel("Relative Frequency")
     ax2.legend(loc='upper center')
 
-    st.pyplot(fig2)
+    st.pyplot(fig2, clear_figure=True)
+    plt.close(fig2)
 
     # Auto-analysis readout (independent checks so both mean and width pathologies can fire simultaneously)
-    has_pathology = False
-    if post_mu > 0.5:
-        st.warning("**Mean shift →** The histogram slopes downward! The predicted posterior mean is shifted **right** of the true posterior, pushing ranks low.")
-        has_pathology = True
-    if post_mu < -0.5:
-        st.warning("**Mean shift ←** The histogram slopes upward! The predicted posterior mean is shifted **left** of the true posterior, pushing ranks high.")
-        has_pathology = True
-    if post_sigma < 0.7:
-        st.error("**Width too narrow →** U-shape! The model is **overconfident**. The True $\\theta^*$ frequently lands completely outside the tight predictions, piling up at ranks 0 and $M$.")
-        has_pathology = True
-    if post_sigma > 1.5:
-        st.info("**Width too wide →** Bathtub (∩) shape! The model is **underconfident**. The predicted posterior stretches so wide that the True $\\theta^*$ always safely lands near the middle, starving the 0 and $M$ rank edges.")
-        has_pathology = True
-    if not has_pathology:
-        st.success("Perfectly Uniform! The model predicts exactly the correct data distribution without bias or over/under-confidence.")
+    with st.container(height=280, border=False):
+        has_pathology = False
+        if post_mu > 0.5:
+            st.warning("**Mean shift →** The histogram slopes downward! The predicted posterior mean is shifted **right** of the true posterior, pushing ranks low.")
+            has_pathology = True
+        if post_mu < -0.5:
+            st.warning("**Mean shift ←** The histogram slopes upward! The predicted posterior mean is shifted **left** of the true posterior, pushing ranks high.")
+            has_pathology = True
+        if post_sigma < 0.7:
+            st.error("**Width too narrow →** U-shape! The model is **overconfident**. The True $\\theta^*$ frequently lands completely outside the tight predictions, piling up at ranks 0 and $M$.")
+            has_pathology = True
+        if post_sigma > 1.5:
+            st.info("**Width too wide →** Bathtub (∩) shape! The model is **underconfident**. The predicted posterior stretches so wide that the True $\\theta^*$ always safely lands near the middle, starving the 0 and $M$ rank edges.")
+            has_pathology = True
+        if not has_pathology:
+            st.success("Perfectly Uniform! The model predicts exactly the correct data distribution without bias or over/under-confidence.")
 
 
 def render():
@@ -178,7 +181,7 @@ def render():
     # ==========================================
     # Sidequest: Why ECDF over Histogram?
     # ==========================================
-    with st.expander("🗺️ Sidequest: Is a histogram the best choice?"):
+    with st.expander("Sidequest: Is a histogram the best choice?"):
         # ECDF plot at the top of the expander
         N_ecdf = 2000
         true_thetas_ecdf = np.random.normal(0, 1.0, N_ecdf)
@@ -210,24 +213,26 @@ def render():
         ax3.legend(loc='upper left')
         ax3.set_title("ECDF of SBC Ranks")
         
-        st.pyplot(fig3)
+        st.pyplot(fig3, clear_figure=True)
+        plt.close(fig3)
         
         # Auto-analysis readout for ECDF (independent checks)
-        has_ecdf_pathology = False
-        if post_mu > 0.5:
-            st.warning("**Mean shift →** The ECDF **bows above** the band — the predicted posterior is shifted **right**, so ranks pile up low and the cumulative curve rises too fast on the left.")
-            has_ecdf_pathology = True
-        if post_mu < -0.5:
-            st.warning("**Mean shift ←** The ECDF **bows below** the band — the predicted posterior is shifted **left**, so ranks pile up high and the cumulative curve lags behind.")
-            has_ecdf_pathology = True
-        if post_sigma < 0.7:
-            st.error("**Width too narrow →** The ECDF forms an **S-shape** crossing through the band — the model is **overconfident**. Ranks cluster at the extremes (0 and $M$), causing the curve to rise steeply at both ends.")
-            has_ecdf_pathology = True
-        if post_sigma > 1.5:
-            st.info("**Width too wide →** The ECDF stays **flat at the edges** and rises steeply in the middle — the model is **underconfident**. The True $\\theta^*$ almost always lands in the center of the over-wide posterior, starving the extreme ranks.")
-            has_ecdf_pathology = True
-        if not has_ecdf_pathology:
-            st.success("The ECDF tracks perfectly inside the 95% CI band — the model is well-calibrated!")
+        with st.container(height=280, border=False):
+            has_ecdf_pathology = False
+            if post_mu > 0.5:
+                st.warning("**Mean shift →** The ECDF **bows above** the band — the predicted posterior is shifted **right**, so ranks pile up low and the cumulative curve rises too fast on the left.")
+                has_ecdf_pathology = True
+            if post_mu < -0.5:
+                st.warning("**Mean shift ←** The ECDF **bows below** the band — the predicted posterior is shifted **left**, so ranks pile up high and the cumulative curve lags behind.")
+                has_ecdf_pathology = True
+            if post_sigma < 0.7:
+                st.error("**Width too narrow →** The ECDF forms an **S-shape** crossing through the band — the model is **overconfident**. Ranks cluster at the extremes (0 and $M$), causing the curve to rise steeply at both ends.")
+                has_ecdf_pathology = True
+            if post_sigma > 1.5:
+                st.info("**Width too wide →** The ECDF stays **flat at the edges** and rises steeply in the middle — the model is **underconfident**. The True $\\theta^*$ almost always lands in the center of the over-wide posterior, starving the extreme ranks.")
+                has_ecdf_pathology = True
+            if not has_ecdf_pathology:
+                st.success("The ECDF tracks perfectly inside the 95% CI band — the model is well-calibrated!")
         
         st.markdown("""
 The rank histogram is probably the simplest SBC visualization — but it has one key **disadvantage**: **bin sensitivity.** The shape of the histogram depends heavily on the number of bins you choose. Too few bins smooth away real pathologies; too many bins amplify noise. If the number of bins doesn't evenly divide the total number of ranks, some bins are expected to get slightly more counts than others, introducing artifacts.

@@ -146,7 +146,8 @@ def render():
     plot_image(axes[2], img_filtered, "Filtered Projection")
     
     plt.tight_layout()
-    st.pyplot(fig)
+    st.pyplot(fig, clear_figure=True)
+    plt.close(fig)
     
 if __name__ == "__main__":
     st.set_page_config(layout="wide")

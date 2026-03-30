@@ -274,7 +274,7 @@ def cat_resnet_summary_widget(instance_id: str = "main"):
                 )
 
     st.divider()
-    with st.expander("📝 Interesting Observations"):
+    with st.expander("Interesting Observations"):
         st.markdown("""
             **Interesting observations:**
             - **We recommend the 10 cat model**: Try switching to this model to the 10 cat models as you can gradually follow the changes in embedding.

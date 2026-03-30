@@ -147,11 +147,11 @@ def render_ui():
     # Redo-sampling button to regenerate noise and re-evaluate posterior
     btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
     with btn_col2:
-        st.button("🔄 Redo Sampling (Generate New Noise & Infer)", use_container_width=True)
+        st.button("Redo Sampling (Generate New Noise & Infer)", width="stretch")
     
     # 3. Dynamic Inference Block
     if posterior is None:
-        st.info("⚠️ No valid `estimator.pt` or `training_parameters.json` found in this model directory! Train an SBI Neural Flow to unlock posterior inference plotting.")
+        st.info("No valid `estimator.pt` or `training_parameters.json` found in this model directory! Train an SBI Neural Flow to unlock posterior inference plotting.")
         return
         
     with st.spinner(f"Evaluating Posterior across {len(indices_to_show)} images..."):
@@ -242,7 +242,7 @@ def render_ui():
         plt.close(fig1)
 
     # 4. Explanatory Expanders
-    with st.expander("📖 How to read the Posterior"):
+    with st.expander("How to read the Posterior"):
         st.markdown(r"""
             **Continuous Posterior Density (KDE):** This plot shows the continuous probability distribution over the model index. Since our method learns an approximate neural posterior $q(\theta | x)$,
             we can draw many samples from this posterior (typically around 2000). From these samples, we estimate a smooth posterior density using Kernel Density Estimation (KDE): conceptually, KDE places many small bell curves (otherwise known as _Gaussian kernels_) at the sampled values and adds them up, such that we receive a smooth approximation of the neural posterior estimate.
@@ -254,7 +254,7 @@ def render_ui():
             - **Estimator Mean ± Std:** The vertical marker and error bars represent the model's quantitative estimate.
         """)
         
-    with st.expander("🧪 Interesting things to try"):
+    with st.expander("Interesting things to try"):
         st.markdown("""
             Here are some key insights to explore in this widget:
             

@@ -54,7 +54,6 @@ def run_widget(widget_filename: str, function_name: str = "render") -> None:
     if func is None:
         st.error(f"Render function not found in {widget_filename}")
         return
-
     func()
 
 
@@ -77,7 +76,7 @@ def main() -> None:
     # Section 2: High-Fidelity Inference
     st.header("2. High-Fidelity Inference")
     render_markdown("03_02_NPE-explainer.md")
-    st.divider()
+    st.divider() 
 
     st.subheader("Ambiguity and Ill-Posedness")
     st.write("Before we infer, let's see why a single point estimate isn't enough.")
@@ -94,7 +93,7 @@ def main() -> None:
     st.divider()
 
     
-    with st.expander("🔬 View Dimensionality & Metric Sanity Checks", expanded=False):
+    with st.expander("View Dimensionality & Metric Sanity Checks", expanded=False):
         st.subheader("UMAP Embedding Sanity")
         run_widget("03_02_external_validation_umap.py")
         st.divider()

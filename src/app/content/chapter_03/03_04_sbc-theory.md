@@ -1,12 +1,12 @@
-Us personally, we loved the previous two widgets. There’s just something very satisfying about watching a neural network try to predict whether a cat is standing or lying down. It’s almost bordering on the absurd; the amount of compute we spent on training these models on our own laptops overnight must be the equivalent of supercomputers just a few decades ago. And now we can ever so casually watch a machine struggle with cat pictures…
+There’s just something deeply satisfying about watching a neural network try to predict whether a cat is standing or lying down. It borders on the absurd: the amount of compute we spent training these models on our own laptops overnight must be equivalent to supercomputers from just a few decades ago. And now we can ever so casually watch a machine struggle with cat pictures…
 
-Continuing the struggle, what do we have to say about internal validation? Remember, that was the part where we would like to test whether our learned neural posterior estimator accurately captures the simulated training dataset (not whether it’s actually ‘realistic’). This leads us to a neat concept called _Simulation Based Calibration_ (SBC). Don’t be fooled by the name, this method does not make our model well calibrated it just gives us information _whether_ we are.
+Continuing the struggle, what do we have to say about internal validation? Remember, that was the part where we would like to test whether our learned neural posterior estimator accurately captures the simulated training dataset (not whether it’s actually "realistic"). This leads us to a neat concept called *Simulation-Based Calibration* (SBC). Don’t be fooled by the name; this method does not make our models well-calibrated, it just gives us information on *whether* they are.
 
 Here’s the "mantra" behind SBC you should remember:
 
-### The true parameter $\theta^*$ should look like any other sample drawn from the simulated posterior.
+> **The true parameter $\theta^*$ should look like any other sample drawn from the simulated posterior.**
 
-This statement needs some unpacking; it’s something we struggled a lot for some reason.
+This statement needs some unpacking; it’s something we personally struggled with for a while.
 
 Consider a fixed observation $x$. There exists a **true posterior**
 
@@ -34,7 +34,7 @@ should be statistically indistinguishable from samples drawn from the true poste
 
 In other words:
 
-> **$\theta^*$ should “look like” any other sample from the posterior.**
+> **$\theta^*$ should look like any other sample from the posterior.**
 
 How do we make this idea quantitative?
 
