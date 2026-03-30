@@ -151,11 +151,13 @@ def main():
     render_markdown("02_02_multiple_waves.md", base_dir=CHAPTER2_DIR)
     
     anchor("huygens-simulator")
-    st.markdown("### Interactive: Huygens Simulator")
+    st.markdown("### Interactive: Interference and Huygens Principle")
     run_widget("02_01_huygens.py", "huygens_fresnel_widget")
+    render_markdown("02_03_huygens.md", base_dir=CHAPTER2_DIR)
     run_widget("02_01_huygens.py", "multiple_sources_wave")
     
     anchor("fraunhofer-simulator")
+    render_markdown("02_04_fraunhofer-bridge.md", base_dir=CHAPTER2_DIR)
     st.markdown("### Interactive: Fraunhofer Diffraction")
     run_widget("02_02_fraunhofer.py", "fraunhofer_diffraction_widget")
 
@@ -172,10 +174,12 @@ def main():
     
     render_markdown("02_06_fourier_manipulation.md", base_dir=CHAPTER2_DIR)
     
-    anchor("fourier-manipulation")
-    st.markdown("### Interactive: Fourier Manipulation")
+    anchor("object")
+    st.markdown("### Interactive: Imaging of Objects")
     run_widget("02_06_cat_projector.py", "render")
     render_markdown("02_06a_detour-and-fourier-manipulation.md", base_dir=CHAPTER2_DIR)
+    anchor("fourier-manipulation")
+    st.markdown("### Interactive: Fourier Manipulation")
     run_widget("02_05_masked-2d-fourier.py", "render")
     render_markdown("02_07_manipulation2.md", base_dir=CHAPTER2_DIR)
 

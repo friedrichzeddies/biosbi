@@ -34,7 +34,7 @@ def _as_scalar(value, fallback):
 
 @st.fragment
 def render(instance_id: str = "main"):
-    st.subheader("Interactive Cat Projector")
+    st.write("#### Cat Projector")
 
     try:
         simulator = load_simulator()

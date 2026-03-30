@@ -1,4 +1,4 @@
-_Have you read both pages? If so, you can now continue to the summary. Else, go up and see the next chapter._
+_Have you read both chapters? If so, you can now continue to the summary._
 
 ## Summary
 
@@ -77,8 +77,8 @@ For high-dimensional images, representation learning (for example ResNet summari
 Robust evaluation needs three checks, and each one answers a different question:
 
 1. Internal validation: does the model match the simulated training distribution?
+   - Calibration (SBC): over many simulated trials, ranks of true parameters should be approximately uniform.
 2. External validation: does simulation transfer to real data sufficiently well?
-3. Calibration (SBC): over many simulated trials, ranks of true parameters should be approximately uniform.
 
 Passing only internal checks is not enough if simulator assumptions miss important real-world effects.
 

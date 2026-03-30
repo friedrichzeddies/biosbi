@@ -166,7 +166,7 @@ def _theoretical_sinc_amplitude(y_vals: np.ndarray, observation_distance: float)
 
 @st.fragment
 def fraunhofer_diffraction_widget() -> None:
-	st.header("Single-Slit Propagation: Near Field to Far Field")
+	st.write("#### Single-Slit Propagation: Near Field to Far Field")
 	st.caption(
 		"A planar wave enters from negative x and passes through one slit at x=0. "
 		"Increase the observation distance to approach the Fraunhofer (Fourier/sinc) regime."

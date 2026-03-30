@@ -65,6 +65,8 @@ def render():
         max_view_distance=1000,
         key="cat_3d_viewer_v3"
     )
+    st.caption("_In case the lighting is making things hard to see in the 3D model viewer, " \
+    "you might use the dark mode (if not already activated)_")
 
 # Allow standalone execution
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ def create_donut_mask(shape, inner_radius, outer_radius):
 
 @st.fragment
 def render():
-    st.write("### Interactive 2D Fourier Transform")
+    st.write("#### 2D Fourier Transform")
     st.write("Explore how different spatial frequencies (low vs. high) contribute to the image formation.")
     
     simulator = load_simulator()

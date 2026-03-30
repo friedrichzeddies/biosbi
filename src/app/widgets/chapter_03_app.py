@@ -65,7 +65,7 @@ def main() -> None:
     st.caption("Sequential integrated flow for Chapter 3 theory and interactive validation.")
 
     # Section 1: The SBI Framework
-    st.header("1. The SBI Framework")
+    st.write("#### 1. The SBI Framework")
     render_markdown("03_01_sbi-explainer.md")
     st.divider()
     
@@ -75,7 +75,7 @@ def main() -> None:
     st.divider()
 
     # Section 2: High-Fidelity Inference
-    st.header("2. High-Fidelity Inference")
+    st.write("#### 2. High-Fidelity Inference")
     render_markdown("03_02_NPE-explainer.md")
     st.divider()
 
@@ -85,7 +85,7 @@ def main() -> None:
     st.divider()
     
     # Section 3: Internal & External Validation
-    st.header("3. Internal & External Validation")
+    st.write("#### 3. Internal & External Validation")
     render_markdown("03_03_model_misspec_general.md")
     st.divider()
 
@@ -103,7 +103,7 @@ def main() -> None:
     st.divider()
 
     # Section 4: Statistical Calibration (SBC)
-    st.header("4. Statistical Calibration (SBC)")
+    st.write("#### 4. Statistical Calibration (SBC)")
     render_markdown("03_04_sbc-theory.md")
     st.divider()
     

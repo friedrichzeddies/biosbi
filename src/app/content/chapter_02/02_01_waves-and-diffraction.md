@@ -6,7 +6,7 @@ Essentially, this part will consist of the following line of thought:
 2. Fourier Transforms: the language of imaging
 3. Real systems: what do we have to account for theoretically and practically?
 
-In order to tackle that challenge, we will have to set some prerequisites, and assume that basic calculus and core physics (from pretty much all domains, from quantum mechanics and atomic physics to classical descriptions) are well established for the reader. As we don't have the time to go much deeper and are probably implicitely assuming that knowledge sometimes, we still hope that the course makes sense in its construction.
+In order to tackle that challenge, we will have to set some prerequisites, and assume that basic calculus and core physics (from pretty much all domains, from quantum mechanics and atomic physics to classical descriptions) are (well) established or familiar for the reader. As we don't have the time to go much deeper and are probably implicitely assuming that knowledge sometimes, we still hope that the course makes sense in its construction.
 
 ### Waves and Diffraction: Where the Story Actually Begins
 

@@ -131,7 +131,7 @@ def _show_payload_and_gif(payload: dict, section_title: str) -> None:
 
 @st.fragment
 def single_wave() -> None:
-	st.header("2D Circular Wave Simulator")
+	st.write("#### 2D Circular Wave Simulator")
 	st.caption("Adjust sliders, then apply once to compute one period and play a smooth looping GIF.")
 	col1, col2 = st.columns(2)
 
@@ -165,7 +165,7 @@ def single_wave() -> None:
 
 @st.fragment
 def huygens_fresnel_widget() -> None:
-	st.header("Two-Source Interference Simulator")
+	st.write("#### Two-Source Interference Simulator")
 	st.caption(
 		"Work on interference: source 1 is fixed; source 2 phase and position are adjustable."
 	)
@@ -202,7 +202,7 @@ def huygens_fresnel_widget() -> None:
 
 @st.fragment
 def multiple_sources_wave() -> None:
-	st.header("Multiple Sources: Huygens' Principle")
+	st.write("#### Multiple Sources: Huygens' Principle")
 	st.caption(
 		"Explore planar wave formation with 2-50 closely-spaced sources all in phase. "
 		"As you increase the number of sources, observe the emergence of a planar wavefront." \

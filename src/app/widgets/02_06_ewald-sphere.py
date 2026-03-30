@@ -101,7 +101,7 @@ def _plot_spot_interaction(spots: np.ndarray, k_electron: float, k_xray: float, 
 
 @st.fragment
 def render() -> None:
-    st.header("Ewald Sphere: Reciprocal Lattice Interaction")
+    st.write("#### Ewald Sphere: Reciprocal Lattice Interaction")
     st.caption("Compare how electrons (flat Ewald) vs X-rays (curved Ewald) interact with the crystal lattice.")
 
     c1, c2, c3 = st.columns(3)

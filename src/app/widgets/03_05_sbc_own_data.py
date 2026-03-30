@@ -87,7 +87,7 @@ def _render_single_trial(simulator, posterior, M, snr_scale, defocus_scale, b_fa
                 vis_col1, vis_col2 = st.columns([1, 2])
                 
                 with vis_col1:
-                    st.write(f"**Simulated Image** ($\theta^* = {true_idx:.2f}$)")
+                    st.write(f"**Simulated Image** ($\\theta^* = {true_idx:.2f}$)")
                     fig1, ax1 = plt.subplots(figsize=(4, 4))
                     ax1.imshow(image[0].numpy(), cmap='gray')
                     ax1.axis('off')
