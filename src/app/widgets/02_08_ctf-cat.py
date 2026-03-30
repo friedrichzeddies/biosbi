@@ -242,7 +242,7 @@ def render(instance_id: str = "main"):
     )
 
     with col2:
-        st.markdown("### Projection Befora & After CTF")
+        st.markdown("### Projection Before & After CTF")
         fig1, ax1 = plt.subplots(figsize=(4, 4))
         lo_clean = float(np.percentile(img_clean, 1))
         hi_clean = float(np.percentile(img_clean, 99))
