@@ -10,7 +10,7 @@ What would the equivalent of a “single trial” from the previous explainer be
 
 - Step 3: Pass the simulated image $x_{sim}$ into the trained estimator. Ask it to generate $M$ samples (e.g., 50 or 100) from the estimated posterior.
 
-- Step 4: Count how many of the M predicted samples are smaller than the original “true” \theta^\*. This integer is your rank statistic for this trial.
+- Step 4: Count how many of the M predicted samples are smaller than the original “true” $\theta^\*$. This integer is your rank statistic for this trial.
 
 By repeating these 4 steps $N$ times, we can build the histogram and ECDF plots shown on the previous page to see if our cat-model is genuinely "honest" about its conformational uncertainty. Here, $N$ is the number of individual trials we perform. A rough guideline for choosing a large enough $N$ is to ensure your rank histogram stays stable if you repeat the entire calculation. Stability implies you've sampled a sufficiently large volume of your priors (orientation, noise, CTF, etc.) to obtain a broadly representative sample.
 

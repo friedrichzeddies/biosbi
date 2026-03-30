@@ -131,20 +131,22 @@ def render() -> None:
         spots=spots, k_electron=k_e, k_xray=k_x, tolerance=tol, xlim=xlim
     )
 
-    col_plot, col_info = st.columns([1.4, 0.6])
-    with col_plot:
-        st.pyplot(fig, clear_figure=True)
-        plt.close(fig)
+    st.pyplot(fig, clear_figure=True)
+    plt.close(fig)
 
-    with col_info:
+    m1, m2, m3 = st.columns(3)
+    with m1:
         st.metric("Electron λ", f"{lam_e:.4f} Å")
+    with m2:
         st.metric("Diffracting spots (e⁻)", hits_e)
+    with m3:
         st.metric("Diffracting spots (X-ray)", hits_x)
-        st.markdown("---")
-        st.caption(
-            f"**Red dots** = spots on Ewald condition (diffracting). **Electrons** at {config['voltage']:.0f} keV produce "
-            "nearly flat curvature → local lattice plane projection. **X-rays** show strong curvature."
-        )
+
+    st.markdown("---")
+    st.caption(
+        f"**Red dots** = spots on Ewald condition (diffracting). **Electrons** at {config['voltage']:.0f} keV produce "
+        "nearly flat curvature → local lattice plane projection. **X-rays** show strong curvature."
+    )
 
 
 if __name__ == "__main__":
